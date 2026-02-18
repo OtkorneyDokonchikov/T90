@@ -1,0 +1,7 @@
+{
+  "name": "Advanced Processing Interface (API-Roadmap)",
+  "description": "A high-performance enterprise-grade interface for batch data processing, annotation, and professional workflow management.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
