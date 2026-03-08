@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { ToolType, Theme } from '../types';
 
@@ -6,9 +5,6 @@ interface ToolDockProps {
   activeTool: ToolType;
   onToolSelect: (tool: ToolType) => void;
   theme: Theme;
-  showRulers: boolean;
-  isPortrait: boolean;
-  onPortraitToggle: () => void;
 }
 
 const toolLabels: Record<ToolType, string> = {
@@ -18,17 +14,10 @@ const toolLabels: Record<ToolType, string> = {
   [ToolType.ROTATE]: 'Поворот',
   [ToolType.DODGE]: 'Осветление',
   [ToolType.BURN]: 'Затемнение',
-  [ToolType.TEXT]: 'Текст'
+  [ToolType.TEXT]: 'Текст',
 };
 
-const ToolDock: React.FC<ToolDockProps> = ({ 
-  activeTool, 
-  onToolSelect, 
-  theme,
-  showRulers,
-  isPortrait,
-  onPortraitToggle
-}) => {
+const ToolDock: React.FC<ToolDockProps> = ({ activeTool, onToolSelect, theme }) => {
   const isDark = theme === 'dark';
   const tools = [
     { type: ToolType.SELECT, icon: <PointerIcon /> },
@@ -50,8 +39,8 @@ const ToolDock: React.FC<ToolDockProps> = ({
             key={tool.type}
             onClick={() => onToolSelect(tool.type)}
             className={`p-1.5 rounded-xl transition-all group relative active:scale-90 ${
-              activeTool === tool.type 
-                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30' 
+              activeTool === tool.type
+                ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
                 : (isDark ? 'text-zinc-500 hover:text-white hover:bg-white/5' : 'text-zinc-400 hover:text-zinc-800 hover:bg-zinc-100')
             }`}
           >

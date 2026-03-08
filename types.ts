@@ -36,6 +36,4 @@ export interface WorkspaceState {
   history: string[];
   theme: Theme;
   selectedPage: number;
-  isPortrait: boolean;
-  showRulers: boolean;
 }

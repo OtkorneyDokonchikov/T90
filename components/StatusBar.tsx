@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Theme } from '../types';
 
@@ -12,18 +11,64 @@ interface StatusBarProps {
   theme: Theme;
 }
 
-const StatusBar: React.FC<StatusBarProps> = ({ 
-  isVoiceActive, 
-  setIsVoiceActive, 
-  lastAction, 
-  currentPage, 
+type MemoryState = string;
+
+type BrowserMemory = {
+  usedJSHeapSize: number;
+};
+
+type WindowWithMemory = Window & {
+  performance: Performance & {
+    memory?: BrowserMemory;
+  };
+};
+
+type ProcessWithMemory = {
+  memoryUsage?: () => { rss?: number; heapUsed?: number };
+};
+
+const formatMemory = (bytes: number): string => {
+  const mb = bytes / (1024 * 1024);
+  if (mb < 1024) return `${Math.round(mb)} MB`;
+  return `${(mb / 1024).toFixed(1)} GB`;
+};
+
+const readMemoryUsage = (): MemoryState => {
+  try {
+    const processCandidate = (globalThis as unknown as { process?: ProcessWithMemory }).process;
+    if (processCandidate?.memoryUsage) {
+      const usage = processCandidate.memoryUsage();
+      const bytes = usage.heapUsed ?? usage.rss;
+      if (typeof bytes === 'number' && Number.isFinite(bytes)) {
+        return formatMemory(bytes);
+      }
+    }
+
+    const win = window as WindowWithMemory;
+    const browserBytes = win.performance?.memory?.usedJSHeapSize;
+    if (typeof browserBytes === 'number' && Number.isFinite(browserBytes)) {
+      return formatMemory(browserBytes);
+    }
+
+    return 'N/A';
+  } catch {
+    return 'N/A';
+  }
+};
+
+const StatusBar: React.FC<StatusBarProps> = ({
+  isVoiceActive,
+  setIsVoiceActive,
+  lastAction,
+  currentPage,
   totalPages,
   onPageChange,
-  theme 
+  theme,
 }) => {
   const isDark = theme === 'dark';
   const [saveCountdown, setSaveCountdown] = useState(10);
   const [isSaving, setIsSaving] = useState(false);
+  const [memoryUsage, setMemoryUsage] = useState<MemoryState>('N/A');
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -40,18 +85,25 @@ const StatusBar: React.FC<StatusBarProps> = ({
     return () => clearInterval(timer);
   }, []);
 
+  useEffect(() => {
+    setMemoryUsage(readMemoryUsage());
+    const memoryTimer = setInterval(() => {
+      setMemoryUsage(readMemoryUsage());
+    }, 1500);
+
+    return () => clearInterval(memoryTimer);
+  }, []);
+
   return (
     <footer className={`h-8 border-t flex items-center justify-between px-3 text-[10px] font-medium z-50 transition-colors relative ${isDark ? 'bg-[#111] border-white/10 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-500'}`}>
-      {/* Левая часть: Статус системы и Автосохранение */}
       <div className="flex items-center gap-4 min-w-[200px]">
         <div className="flex items-center gap-1.5 flex-shrink-0">
           <div className="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_8px_rgba(34,197,94,0.5)]" />
           <span className="uppercase tracking-tighter font-bold">Система готова</span>
         </div>
-        
+
         <div className={`h-3 w-px flex-shrink-0 ${isDark ? 'bg-white/10' : 'bg-zinc-200'}`} />
-        
-        {/* Блок автосохранения */}
+
         <div className={`flex items-center gap-2 transition-all duration-500 ${isSaving ? 'text-blue-500' : ''}`}>
           <div className={`relative ${isSaving ? 'animate-bounce' : ''}`}>
             <SaveIcon active={isSaving} />
@@ -68,7 +120,6 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
       </div>
 
-      {/* Центральная часть: Навигация по страницам */}
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
         <div className={`flex items-center gap-1.5 px-1 text-[9px] uppercase font-bold tracking-tight ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
           <FileIcon />
@@ -76,7 +127,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
 
         <div className={`flex items-center rounded-md border overflow-hidden h-6 shadow-sm transition-all ${isDark ? 'bg-zinc-900 border-white/10 hover:border-blue-500/30' : 'bg-white border-zinc-300 hover:border-blue-400'}`}>
-          <button 
+          <button
             onClick={() => onPageChange(currentPage - 1)}
             disabled={currentPage <= 1}
             title="Предыдущая страница"
@@ -84,12 +135,12 @@ const StatusBar: React.FC<StatusBarProps> = ({
           >
             <ChevronLeftIcon />
           </button>
-          
+
           <div className={`px-4 h-full flex items-center text-[10px] font-mono font-black min-w-[70px] justify-center tracking-tighter ${isDark ? 'text-blue-400 bg-blue-500/5' : 'text-blue-600 bg-blue-50/50'}`}>
             {currentPage} / {totalPages}
           </div>
 
-          <button 
+          <button
             onClick={() => onPageChange(currentPage + 1)}
             disabled={currentPage >= totalPages}
             title="Следующая страница"
@@ -100,9 +151,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
       </div>
 
-      {/* Правая часть: Голос и Метрики */}
       <div className="flex items-center gap-4 min-w-[200px] justify-end">
-        <button 
+        <button
           onClick={() => setIsVoiceActive(!isVoiceActive)}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded transition-all active:scale-95 ${
             isVoiceActive ? 'bg-red-500/10 text-red-500 font-bold' : (isDark ? 'hover:bg-white/5 text-zinc-500 hover:text-zinc-300' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-800')
@@ -114,7 +164,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
         <div className={`h-3 w-px ${isDark ? 'bg-white/10' : 'bg-zinc-200'}`} />
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 text-[10px]">
           <div className="flex items-center gap-1">
             <span className={isDark ? 'text-zinc-600' : 'text-zinc-400'}>Задержка:</span>
             <span className={`font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-800'}`}>14мс</span>
@@ -122,6 +172,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
           <div className="flex items-center gap-1">
             <span className={isDark ? 'text-zinc-600' : 'text-zinc-400'}>GPU:</span>
             <span className="font-mono text-green-500">22%</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className={isDark ? 'text-zinc-600' : 'text-zinc-400'}>RAM</span>
+            <span className={`font-mono ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>{memoryUsage}</span>
           </div>
         </div>
       </div>

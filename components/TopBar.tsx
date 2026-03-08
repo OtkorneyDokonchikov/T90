@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { UserRole, AppScenario, Theme } from '../types';
 
@@ -7,12 +6,13 @@ interface TopBarProps {
   onRoleChange: (role: UserRole) => void;
   scenario: AppScenario;
   onScenarioChange: (scenario: AppScenario) => void;
+  onQualityControlToggle: () => void;
   theme: Theme;
   toggleTheme: () => void;
 }
 
 const ChevronDownIcon = ({ small }: { small?: boolean }) => (
-  <svg width={small ? "8" : "12"} height={small ? "8" : "12"} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
+  <svg width={small ? '8' : '12'} height={small ? '8' : '12'} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m6 9 6 6 6-6"/></svg>
 );
 const SunIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><path d="M12 1v2m0 18v2M4.2 4.2l1.4 1.4m12.8 12.8l1.4 1.4M1 12h2m18 0h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></svg>;
 const MoonIcon = () => <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>;
@@ -48,7 +48,7 @@ const scenarioLabels: Record<AppScenario, string> = {
   [AppScenario.EXPORT]: 'ЭКСПОРТ',
   [AppScenario.REVIEW]: 'ПРОВЕРКА',
   [AppScenario.ANNOTATION]: 'НОТАЦИЯ',
-  [AppScenario.QUALITY_CONTROL]: 'КОНТРОЛЬ КАЧЕСТВА'
+  [AppScenario.QUALITY_CONTROL]: 'КОНТРОЛЬ КАЧЕСТВА',
 };
 
 const scenarioMenus: Record<AppScenario, { label: string; icon: React.ReactNode; desc: string; shortcut?: string }[]> = {
@@ -88,12 +88,13 @@ const scenarioMenus: Record<AppScenario, { label: string; icon: React.ReactNode;
   ],
 };
 
-const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenarioChange, theme, toggleTheme }) => {
+const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenarioChange, onQualityControlToggle, theme, toggleTheme }) => {
   const isDark = theme === 'dark';
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<AppScenario | null>(null);
-  
+  const [isLogoBroken, setIsLogoBroken] = useState(false);
+
   const settingsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
@@ -109,6 +110,12 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
   }, []);
 
   const handleScenarioClick = (s: AppScenario) => {
+    if (s === AppScenario.QUALITY_CONTROL) {
+      onQualityControlToggle();
+      setOpenMenu(null);
+      return;
+    }
+
     if (openMenu === s) setOpenMenu(null);
     else {
       setOpenMenu(s);
@@ -120,7 +127,7 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
     { label: 'Общие настройки', icon: <SettingsIcon />, shortcut: 'Ctrl+,' },
     { label: 'Горячие клавиши', icon: <KeyboardIcon />, shortcut: 'Alt+K' },
     { label: 'Голосовое управление', icon: <MicIcon />, shortcut: 'Alt+V' },
-    { label: 'Профили', icon: <ProfileIcon size={12}/>, shortcut: 'Alt+P' },
+    { label: 'Профили', icon: <ProfileIcon size={12} />, shortcut: 'Alt+P' },
     { label: 'Экспорт', icon: <ExportIcon />, shortcut: 'Ctrl+E' },
     { label: 'Ошибки', icon: <AlertIcon />, shortcut: 'F12', color: 'text-red-500' },
   ];
@@ -128,8 +135,19 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
   return (
     <header className={`h-11 border-b flex items-center px-3 z-[100] transition-colors relative ${isDark ? 'bg-[#121212] border-white/5' : 'bg-white border-zinc-200 shadow-sm'}`}>
       <div className="flex items-center gap-2 flex-shrink-0 z-10">
-        <div className="w-7 h-7 bg-blue-600 rounded flex items-center justify-center font-black text-base text-white shadow-lg">
-          T
+        <div className="w-7 h-7 rounded flex items-center justify-center shadow-lg overflow-hidden">
+          {isLogoBroken ? (
+            <div className="w-full h-full bg-blue-600 flex items-center justify-center font-black text-base text-white">
+              T
+            </div>
+          ) : (
+            <img
+              src={`${import.meta.env.BASE_URL}images/111.png`}
+              alt="T-90 Logo"
+              className="w-full h-full object-contain"
+              onError={() => setIsLogoBroken(true)}
+            />
+          )}
         </div>
         <span className={`text-[9px] font-black uppercase tracking-wider leading-none whitespace-nowrap ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>
           Тираж редактор Т-90 турбо
@@ -139,19 +157,23 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
       <nav ref={navRef} className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 whitespace-nowrap">
         {Object.keys(AppScenario).map((key) => {
           const s = AppScenario[key as keyof typeof AppScenario];
+          const isQcButton = s === AppScenario.QUALITY_CONTROL;
+
           return (
             <div key={s} className="relative">
               <button
                 onClick={() => handleScenarioClick(s)}
                 className={`px-2 py-1 text-[9px] rounded transition-all uppercase tracking-wide font-bold flex items-center gap-1 ${
-                  scenario === s ? (isDark ? 'bg-white/10 text-white' : 'bg-blue-600 text-white') : (isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-700')
+                  scenario === s && !isQcButton
+                    ? (isDark ? 'bg-white/10 text-white' : 'bg-blue-600 text-white')
+                    : (isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-700')
                 }`}
               >
                 {scenarioLabels[s]}
-                <ChevronDownIcon small />
+                {!isQcButton && <ChevronDownIcon small />}
               </button>
 
-              {openMenu === s && (
+              {!isQcButton && openMenu === s && (
                 <div className={`absolute top-full left-0 mt-1.5 w-56 rounded-lg border p-1 shadow-2xl backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-200 z-[110] ${isDark ? 'bg-[#1a1a1a] border-white/10 text-zinc-300' : 'bg-white border-zinc-200 text-zinc-700'}`}>
                   {scenarioMenus[s].map((item, idx) => (
                     <button key={idx} onClick={() => setOpenMenu(null)} className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-left transition-all hover:bg-white/5 group">

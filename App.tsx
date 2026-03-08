@@ -1,6 +1,5 @@
-
-import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { UserRole, ToolType, AppScenario, WorkspaceState, Theme } from './types';
+import React, { useState, useCallback, useEffect } from 'react';
+import { UserRole, ToolType, AppScenario, WorkspaceState } from './types';
 import TopBar from './components/TopBar';
 import LeftSidebar from './components/LeftSidebar';
 import RightInspector from './components/RightInspector';
@@ -19,16 +18,18 @@ const App: React.FC = () => {
     history: ['Сессия успешно инициализирована'],
     theme: 'dark',
     selectedPage: 1,
-    isPortrait: true,
-    showRulers: false
   });
 
-  const updateState = useCallback(<K extends keyof WorkspaceState,>(key: K, value: WorkspaceState[K]) => {
+  const updateState = useCallback(<K extends keyof WorkspaceState>(key: K, value: WorkspaceState[K]) => {
     setState(prev => ({ ...prev, [key]: value }));
   }, []);
 
   const handleScenarioChange = useCallback((s: AppScenario) => {
     setState(prev => ({ ...prev, scenario: s }));
+  }, []);
+
+  const handleQualityControlToggle = useCallback(() => {
+    window.dispatchEvent(new CustomEvent('t90:toggle-quality-control'));
   }, []);
 
   const toggleTheme = () => {
@@ -39,7 +40,7 @@ const App: React.FC = () => {
     setState(prev => ({
       ...prev,
       history: [...prev.history, entry],
-      historyIndex: prev.history.length
+      historyIndex: prev.history.length,
     }));
   }, []);
 
@@ -61,47 +62,40 @@ const App: React.FC = () => {
 
   return (
     <div className={`flex flex-col h-screen w-screen overflow-hidden select-none transition-colors duration-300 ${isDark ? 'bg-black text-white' : 'bg-zinc-50 text-zinc-900'}`}>
-      <TopBar 
-        role={state.role} 
-        onRoleChange={(r) => updateState('role', r)} 
+      <TopBar
+        role={state.role}
+        onRoleChange={(r) => updateState('role', r)}
         scenario={state.scenario}
         onScenarioChange={handleScenarioChange}
+        onQualityControlToggle={handleQualityControlToggle}
         theme={state.theme}
         toggleTheme={toggleTheme}
       />
-      
+
       <div className="flex flex-1 relative overflow-hidden">
-        <LeftSidebar 
-          isOpen={state.isSidebarOpen} 
+        <LeftSidebar
+          isOpen={state.isSidebarOpen}
           setIsOpen={(v) => updateState('isSidebarOpen', v)}
           selectedPage={state.selectedPage}
           onPageSelect={handlePageChange}
           theme={state.theme}
-          scenario={state.scenario}
         />
-        
+
         <main className={`flex-1 flex flex-col relative ${isDark ? 'bg-[#0d0d0d]' : 'bg-zinc-100/50'}`}>
-          <ToolDock 
-            activeTool={state.activeTool} 
-            onToolSelect={(t) => updateState('activeTool', t)} 
+          <ToolDock
+            activeTool={state.activeTool}
+            onToolSelect={(t) => updateState('activeTool', t)}
             theme={state.theme}
-            showRulers={state.showRulers}
-            isPortrait={state.isPortrait}
-            onPortraitToggle={() => updateState('isPortrait', !state.isPortrait)}
           />
-          <Canvas 
-            scenario={state.scenario} 
-            activeTool={state.activeTool} 
+          <Canvas
+            scenario={state.scenario}
+            activeTool={state.activeTool}
             onAction={addHistory}
             theme={state.theme}
-            showRulers={state.showRulers}
-            setShowRulers={(v) => updateState('showRulers', v)}
-            isPortrait={state.isPortrait}
-            onPortraitToggle={() => updateState('isPortrait', !state.isPortrait)}
           />
         </main>
 
-        <RightInspector 
+        <RightInspector
           isVoiceActive={state.isVoiceActive}
           setIsVoiceActive={(v) => updateState('isVoiceActive', v)}
           history={state.history}
@@ -109,8 +103,8 @@ const App: React.FC = () => {
         />
       </div>
 
-      <StatusBar 
-        isVoiceActive={state.isVoiceActive} 
+      <StatusBar
+        isVoiceActive={state.isVoiceActive}
         setIsVoiceActive={(v) => updateState('isVoiceActive', v)}
         lastAction={state.history[state.historyIndex]}
         currentPage={state.selectedPage}
