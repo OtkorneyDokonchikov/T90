@@ -9,9 +9,8 @@ interface LeftSidebarProps {
   theme: Theme;
 }
 
-type SectionId = 'scan_sources' | 'local_tasks' | 'completed_tasks' | 'work_log';
+type SectionId = 'scan_sources' | 'local_folders' | 'in_progress_tasks' | 'work_log';
 type SortOrder = 'desc' | 'asc';
-type CompletedView = 'today' | 'shift' | 'by_date' | 'by_operator' | 'archive';
 type JournalView = 'all' | 'today' | 'shift' | 'operator' | 'document';
 
 interface ScanTask {
@@ -46,15 +45,15 @@ interface LocalSource {
   files: LocalFile[];
 }
 
-interface CompletedTask {
+interface InProgressTask {
   id: string;
   docNumber: string;
   docName: string;
   operator: string;
-  status: string;
-  savePath: string;
+  stage: string;
+  source: string;
   page: number;
-  completedAt: string;
+  updatedAt: string;
 }
 
 interface JournalRecord {
@@ -70,8 +69,8 @@ interface JournalRecord {
 
 const sectionMeta: Array<{ id: SectionId; label: string }> = [
   { id: 'scan_sources', label: 'Источники сканирования' },
-  { id: 'local_tasks', label: 'Локальные задания' },
-  { id: 'completed_tasks', label: 'Выполненные задания' },
+  { id: 'local_folders', label: 'Локальные папки' },
+  { id: 'in_progress_tasks', label: 'Задания в работе' },
   { id: 'work_log', label: 'Журнал выполненных работ' },
 ];
 
@@ -146,36 +145,26 @@ const localSources: LocalSource[] = [
   },
 ];
 
-const completedTasks: CompletedTask[] = [
+const inProgressTasks: InProgressTask[] = [
   {
-    id: 'completed_1',
+    id: 'progress_1',
     docNumber: '№126',
     docName: 'Техническая редакция',
     operator: 'Кондарев С.А.',
-    status: 'Выполнено',
-    savePath: 'C:/T90/Completed/2026-03-08/doc_126.pdf',
+    stage: 'Подготовка OCR',
+    source: 'Устройство сканирования 1',
     page: 12,
-    completedAt: '2026-03-08T17:12:04+03:00',
+    updatedAt: '2026-03-08T17:12:04+03:00',
   },
   {
-    id: 'completed_2',
+    id: 'progress_2',
     docNumber: '№127',
     docName: 'Протокол проверки',
     operator: 'Кондарев С.А.',
-    status: 'Выполнено',
-    savePath: 'D:/T90/Completed/2026-03-08/doc_127.tiff',
+    stage: 'Ручная верификация',
+    source: 'Локальная папка заданий',
     page: 27,
-    completedAt: '2026-03-08T14:42:36+03:00',
-  },
-  {
-    id: 'completed_3',
-    docNumber: '№119',
-    docName: 'Сопроводительный лист',
-    operator: 'Оператор смены Б',
-    status: 'Выполнено',
-    savePath: 'E:/Archive/Completed/2026-03-07/doc_119.pdf',
-    page: 3,
-    completedAt: '2026-03-07T18:10:05+03:00',
+    updatedAt: '2026-03-08T14:42:36+03:00',
   },
 ];
 
@@ -240,14 +229,12 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
   const isDark = theme === 'dark';
 
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(
-    new Set(['scan_sources', 'local_tasks', 'completed_tasks', 'work_log']),
+    new Set(['scan_sources', 'local_folders', 'in_progress_tasks', 'work_log']),
   );
   const [activeSection, setActiveSection] = useState<SectionId>('scan_sources');
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedLocalSourceId, setSelectedLocalSourceId] = useState<string>(localSources[0].id);
-  const [completedView, setCompletedView] = useState<CompletedView>('today');
   const [journalView, setJournalView] = useState<JournalView>('all');
-  const [completedSort, setCompletedSort] = useState<SortOrder>('desc');
   const [journalSort, setJournalSort] = useState<SortOrder>('desc');
   const [detailCard, setDetailCard] = useState<Array<{ label: string; value: string }>>([]);
   const [detailType, setDetailType] = useState<'none' | 'device' | 'task' | 'file' | 'page' | 'journal'>('none');
@@ -263,24 +250,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
     [selectedLocalSourceId],
   );
 
-  const completedRecords = useMemo(() => {
-    const now = new Date();
-    const shiftStart = new Date(now.getTime() - 12 * 60 * 60 * 1000);
-
-    const filtered = completedTasks.filter((task) => {
-      const created = new Date(task.completedAt);
-      if (completedView === 'today') return isSameDay(created, now);
-      if (completedView === 'shift') return created >= shiftStart;
-      if (completedView === 'by_operator') return task.operator === 'Кондарев С.А.';
-      if (completedView === 'archive') return created < shiftStart;
-      return true;
-    });
-
-    return [...filtered].sort((a, b) => {
-      const diff = new Date(a.completedAt).getTime() - new Date(b.completedAt).getTime();
-      return completedSort === 'desc' ? -diff : diff;
-    });
-  }, [completedSort, completedView]);
+  const inProgressCount = inProgressTasks.length;
 
   const journalRecords = useMemo(() => {
     const now = new Date();
@@ -368,6 +338,11 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
                       <FolderIcon />
                       <span className="truncate">{section.label}</span>
                     </span>
+                    {section.id === 'in_progress_tasks' && (
+                      <span className={`min-w-5 px-1.5 h-4 inline-flex items-center justify-center rounded border text-[9px] font-mono ${isDark ? 'border-white/15 text-zinc-400 bg-black/25' : 'border-zinc-300 text-zinc-600 bg-zinc-100'}`}>
+                        {inProgressCount}
+                      </span>
+                    )}
                   </button>
 
                   {isExpanded && section.id === 'scan_sources' && (
@@ -433,7 +408,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
                     </div>
                   )}
 
-                  {isExpanded && section.id === 'local_tasks' && (
+                  {isExpanded && section.id === 'local_folders' && (
                     <div className="px-4 pt-2 pb-1 space-y-2">
                       <div className="space-y-1.5">
                         {localSources.map((source) => (
@@ -483,32 +458,11 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
                     </div>
                   )}
 
-                  {isExpanded && section.id === 'completed_tasks' && (
+                  {isExpanded && section.id === 'in_progress_tasks' && (
                     <div className="px-4 pt-2 pb-1 space-y-2">
-                      <div className="flex items-center gap-1.5 text-[9px]">
-                        <select
-                          value={completedView}
-                          onChange={(e) => setCompletedView(e.target.value as CompletedView)}
-                          className={`flex-1 rounded border px-2 py-1 ${isDark ? 'bg-black/30 border-white/10 text-zinc-300' : 'bg-zinc-100 border-zinc-200 text-zinc-700'}`}
-                        >
-                          <option value="today">Сегодня</option>
-                          <option value="shift">За смену</option>
-                          <option value="by_date">По дате</option>
-                          <option value="by_operator">По оператору</option>
-                          <option value="archive">Архив выполненных документов</option>
-                        </select>
-                        <button
-                          type="button"
-                          onClick={() => setCompletedSort((prev) => (prev === 'desc' ? 'asc' : 'desc'))}
-                          className="rounded border border-white/10 px-2 py-1 text-zinc-400"
-                        >
-                          {completedSort === 'desc' ? '↓ Дата' : '↑ Дата'}
-                        </button>
-                      </div>
-
                       <div className="rounded-md border border-white/10 bg-black/20 px-2 py-2 text-[10px] space-y-1.5">
-                        {completedRecords.length > 0 ? (
-                          completedRecords.map((task) => (
+                        {inProgressTasks.length > 0 ? (
+                          inProgressTasks.map((task) => (
                             <button
                               key={task.id}
                               type="button"
@@ -518,16 +472,16 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
                                 setDetailCard([
                                   { label: 'Номер документа', value: task.docNumber },
                                   { label: 'Документ', value: task.docName },
-                                  { label: 'Дата', value: dateText(task.completedAt) },
-                                  { label: 'Время', value: timeText(task.completedAt) },
-                                  { label: 'Статус', value: task.status },
-                                  { label: 'Путь сохранения', value: task.savePath },
+                                  { label: 'Этап обработки', value: task.stage },
+                                  { label: 'Источник', value: task.source },
+                                  { label: 'Оператор', value: task.operator },
+                                  { label: 'Обновлено', value: `${dateText(task.updatedAt)} | ${timeText(task.updatedAt)}` },
                                 ]);
                               }}
                               className="w-full rounded px-2 py-1.5 text-left hover:bg-white/5"
                             >
                               <div className="text-zinc-300 truncate">{task.docNumber} • {task.docName}</div>
-                              <div className="text-zinc-500">{dateText(task.completedAt)} | {timeText(task.completedAt)} | {task.status}</div>
+                              <div className="text-zinc-500 truncate">{task.stage} | стр. {task.page} | {timeText(task.updatedAt)}</div>
                             </button>
                           ))
                         ) : (

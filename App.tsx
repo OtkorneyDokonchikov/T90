@@ -1,10 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { UserRole, ToolType, AppScenario, WorkspaceState } from './types';
+import { UserRole, ToolType, AppScenario, WorkspaceState, DocumentTemplateConfig, QcResultSummary } from './types';
 import TopBar from './components/TopBar';
 import LeftSidebar from './components/LeftSidebar';
 import RightInspector from './components/RightInspector';
 import Canvas from './components/Canvas';
 import StatusBar from './components/StatusBar';
+import DocumentTemplateModal from './components/DocumentTemplateModal';
+import QcResultModal from './components/QcResultModal';
 
 const App: React.FC = () => {
   const [state, setState] = useState<WorkspaceState>({
@@ -18,6 +20,37 @@ const App: React.FC = () => {
     theme: 'dark',
     selectedPage: 1,
   });
+  const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
+  const [documentConfig, setDocumentConfig] = useState<DocumentTemplateConfig | null>(null);
+  const [isQcResultModalOpen, setIsQcResultModalOpen] = useState(false);
+
+  const qcResult: QcResultSummary = {
+    documentNumber: '126',
+    checkedAt: '08.03.2026 19:10',
+    operator: 'Кондарев С.А.',
+    status: 'warning',
+    checks: {
+      tiffAnalysis: 'выполнено',
+      ocrQuality: '98%',
+      segmentation: 'выполнено',
+      colorMode: 'соответствует требованиям',
+      scanDefects: '2 замечания',
+      preflight: 'успешно',
+    },
+    pages: {
+      total: 42,
+      aligned: 38,
+      deskewCorrected: 6,
+      noiseCleaned: 12,
+      withWarnings: 3,
+      manualReview: 2,
+    },
+    issues: [
+      'Стр. 12 — перекос изображения',
+      'Стр. 19 — пониженная контрастность',
+      'Стр. 27 — артефакт сканирования',
+    ],
+  };
 
   const updateState = useCallback(<K extends keyof WorkspaceState>(key: K, value: WorkspaceState[K]) => {
     setState(prev => ({ ...prev, [key]: value }));
@@ -43,6 +76,15 @@ const App: React.FC = () => {
     setState(prev => ({ ...prev, selectedPage: Math.max(1, Math.min(100, newPage)) }));
   }, []);
 
+  const handleCreateFromTemplate = useCallback((config: DocumentTemplateConfig) => {
+    setDocumentConfig(config);
+    setState(prev => ({ ...prev, scenario: AppScenario.CREATE, selectedPage: config.startNumber }));
+    addHistory(
+      `Создан документ «${config.name}»: ${config.width}×${config.height} ${config.unit}, страниц ${config.pages}, колонки ${config.columns}`,
+    );
+    setIsTemplateModalOpen(false);
+  }, [addHistory]);
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key === 'v') updateState('isVoiceActive', !state.isVoiceActive);
@@ -62,6 +104,8 @@ const App: React.FC = () => {
         onRoleChange={(r) => updateState('role', r)}
         scenario={state.scenario}
         onScenarioChange={handleScenarioChange}
+        onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
+        onOpenQcResultModal={() => setIsQcResultModalOpen(true)}
         theme={state.theme}
         toggleTheme={toggleTheme}
       />
@@ -101,6 +145,28 @@ const App: React.FC = () => {
         totalPages={100}
         onPageChange={handlePageChange}
         theme={state.theme}
+      />
+
+      <DocumentTemplateModal
+        isOpen={isTemplateModalOpen}
+        theme={state.theme}
+        onClose={() => setIsTemplateModalOpen(false)}
+        onCreate={handleCreateFromTemplate}
+      />
+
+      <QcResultModal
+        isOpen={isQcResultModalOpen}
+        theme={state.theme}
+        resultSummary={qcResult}
+        onClose={() => setIsQcResultModalOpen(false)}
+        onSaveReport={() => {
+          addHistory(`Отчёт сохранён: документ №${qcResult.documentNumber ?? 'Не указано'}`);
+          setIsQcResultModalOpen(false);
+        }}
+        onSendResult={() => {
+          addHistory(`Результат отправлен: документ №${qcResult.documentNumber ?? 'Не указано'}`);
+          setIsQcResultModalOpen(false);
+        }}
       />
     </div>
   );

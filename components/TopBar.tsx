@@ -8,6 +8,8 @@ interface TopBarProps {
   onRoleChange: (role: UserRole) => void;
   scenario: AppScenario;
   onScenarioChange: (scenario: AppScenario) => void;
+  onOpenTemplateModal: () => void;
+  onOpenQcResultModal: () => void;
   theme: Theme;
   toggleTheme: () => void;
 }
@@ -72,8 +74,11 @@ const scenarioMenus: Record<AppScenario, { label: string; icon: React.ReactNode;
     { label: 'Очередь печати', icon: <PrintIcon />, desc: 'На принтер...' },
   ],
   [AppScenario.REVIEW]: [
-    { label: 'Авто-проверка', icon: <PlusIcon />, desc: 'ИИ-контроль' },
-    { label: 'Сравнение', icon: <CompareIcon />, desc: 'Diff-анализ' },
+    { label: 'Авто-проверка', icon: <PlusIcon />, desc: 'Автоматический анализ' },
+    { label: 'Визуальная проверка', icon: <HandIcon />, desc: 'Ручной просмотр документа' },
+    { label: 'Проверка структуры', icon: <StatsIcon />, desc: 'Страницы, порядок, состав' },
+    { label: 'Проверка реквизитов', icon: <CheckIcon />, desc: 'Поля, номера, подписи' },
+    { label: 'Сравнение', icon: <CompareIcon />, desc: 'Сопоставление версий' },
   ],
   [AppScenario.ANNOTATION]: [
     { label: 'Умная разметка', icon: <WandIcon />, desc: 'Авто-выделение' },
@@ -92,7 +97,7 @@ const scenarioMenus: Record<AppScenario, { label: string; icon: React.ReactNode;
   ],
 };
 
-const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenarioChange, theme, toggleTheme }) => {
+const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenarioChange, onOpenTemplateModal, onOpenQcResultModal, theme, toggleTheme }) => {
   const isDark = theme === 'dark';
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -268,7 +273,19 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
               {openMenu === s && (
                 <div className={`absolute top-full left-0 mt-1.5 w-56 rounded-lg border p-1 shadow-2xl backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-200 z-[110] ${isDark ? 'bg-[#1a1a1a] border-white/10 text-zinc-300' : 'bg-white border-zinc-200 text-zinc-700'}`}>
                   {scenarioMenus[s].map((item, idx) => (
-                    <button key={idx} onClick={() => setOpenMenu(null)} className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-left transition-all hover:bg-white/5 group">
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        if (s === AppScenario.CREATE && item.label === 'По шаблону') {
+                          onOpenTemplateModal();
+                        }
+                        if (s === AppScenario.QUALITY_CONTROL && item.label === 'Результат') {
+                          onOpenQcResultModal();
+                        }
+                        setOpenMenu(null);
+                      }}
+                      className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-left transition-all hover:bg-white/5 group"
+                    >
                       <div className="text-zinc-500 group-hover:text-blue-400">{item.icon}</div>
                       <div className="flex flex-col flex-1 min-w-0">
                         <span className="text-[11px] font-bold group-hover:text-white leading-tight">{item.label}</span>

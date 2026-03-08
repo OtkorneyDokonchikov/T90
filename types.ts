@@ -38,6 +38,63 @@ export interface WorkspaceState {
   selectedPage: number;
 }
 
+export type DocumentUnit = 'мм' | 'дюймы';
+export type DocumentOrientation = 'portrait' | 'landscape';
+
+export interface DocumentMargins {
+  top: number;
+  bottom: number;
+  inside: number;
+  outside: number;
+}
+
+export interface DocumentTemplateConfig {
+  presetId: string;
+  name: string;
+  width: number;
+  height: number;
+  unit: DocumentUnit;
+  orientation: DocumentOrientation;
+  pages: number;
+  startNumber: number;
+  columns: number;
+  columnGap: number;
+  margins: DocumentMargins;
+  spread: boolean;
+  primaryTextFrame: boolean;
+  preview: boolean;
+}
+
+export type QcResultStatus = 'success' | 'warning' | 'error';
+
+export interface QcResultChecks {
+  tiffAnalysis?: string;
+  ocrQuality?: string;
+  segmentation?: string;
+  colorMode?: string;
+  scanDefects?: string;
+  preflight?: string;
+}
+
+export interface QcResultPages {
+  total?: number;
+  aligned?: number;
+  deskewCorrected?: number;
+  noiseCleaned?: number;
+  withWarnings?: number;
+  manualReview?: number;
+}
+
+export interface QcResultSummary {
+  documentNumber?: string;
+  checkedAt?: string;
+  operator?: string;
+  status?: QcResultStatus;
+  checks?: QcResultChecks;
+  pages?: QcResultPages;
+  issues?: string[];
+}
+
 export type ModuleVersionStatusKind = 'actual' | 'update_available' | 'conflict' | 'offline';
 
 export interface ModuleResponsibles {
