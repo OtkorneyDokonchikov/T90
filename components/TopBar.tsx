@@ -1,5 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { UserRole, AppScenario, Theme } from '../types';
+import { UserRole, AppScenario, Theme, ModulePassportResolved } from '../types';
+import ModulePassportModal from './ModulePassportModal';
+import { loadModulePassport } from '../config/moduleManifest';
 
 interface TopBarProps {
   role: UserRole;
@@ -96,10 +98,16 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
   const [openMenu, setOpenMenu] = useState<AppScenario | null>(null);
   const [isLogoBroken, setIsLogoBroken] = useState(false);
+  const [isPassportOpen, setIsPassportOpen] = useState(false);
+  const [isPassportLoading, setIsPassportLoading] = useState(false);
+  const [passportData, setPassportData] = useState<ModulePassportResolved | null>(null);
 
   const settingsRef = useRef<HTMLDivElement>(null);
   const userMenuRef = useRef<HTMLDivElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const moduleLabelClickTimeoutRef = useRef<number | null>(null);
+
+  const moduleId = 't90-tirazh-editor';
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -111,12 +119,95 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
+  useEffect(() => {
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsPassportOpen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('keydown', handleEscape);
+      if (moduleLabelClickTimeoutRef.current) {
+        window.clearTimeout(moduleLabelClickTimeoutRef.current);
+      }
+    };
+  }, []);
+
   const handleScenarioClick = (s: AppScenario) => {
     if (openMenu === s) setOpenMenu(null);
     else {
       setOpenMenu(s);
       onScenarioChange(s);
     }
+  };
+
+  const refreshPassport = async () => {
+    setIsPassportLoading(true);
+    const nextData = await loadModulePassport(moduleId);
+    setPassportData(nextData);
+    setIsPassportLoading(false);
+  };
+
+  const openModuleNow = () => {
+    setIsPassportOpen(false);
+    onScenarioChange(AppScenario.CREATE);
+  };
+
+  const handleModuleLabelSingleClick = () => {
+    setIsPassportOpen(true);
+    refreshPassport();
+  };
+
+  const handleModuleLabelClick = () => {
+    if (moduleLabelClickTimeoutRef.current) {
+      window.clearTimeout(moduleLabelClickTimeoutRef.current);
+    }
+
+    moduleLabelClickTimeoutRef.current = window.setTimeout(() => {
+      handleModuleLabelSingleClick();
+      moduleLabelClickTimeoutRef.current = null;
+    }, 220);
+  };
+
+  const handleModuleLabelDoubleClick = () => {
+    if (moduleLabelClickTimeoutRef.current) {
+      window.clearTimeout(moduleLabelClickTimeoutRef.current);
+      moduleLabelClickTimeoutRef.current = null;
+    }
+    openModuleNow();
+  };
+
+  const handleCopyPassport = async () => {
+    if (!passportData) return;
+
+    const payload = {
+      moduleName: passportData.manifest.moduleName,
+      status: passportData.statusText,
+      version: passportData.manifest.version,
+      lastModified: passportData.manifest.lastModified,
+      build: passportData.manifest.build,
+      source: passportData.manifest.source,
+      designBureau: passportData.manifest.designBureau,
+      integration: passportData.manifest.integration,
+      integrations: passportData.manifest.integrations,
+      approvalBadge: passportData.manifest.approvalBadge,
+      iconPath: passportData.manifest.iconPath,
+      approvalNote: passportData.manifest.approvalNote,
+      responsibles: passportData.manifest.responsibles,
+      description: passportData.manifest.description,
+    };
+
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+    } catch {
+      // no-op: UI stays stable even when clipboard is unavailable
+    }
+  };
+
+  const handleOpenHistory = () => {
+    onScenarioChange(AppScenario.REVIEW);
   };
 
   const configMenuItems = [
@@ -145,9 +236,15 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
             />
           )}
         </div>
-        <span className={`text-[9px] font-black uppercase tracking-wider leading-none whitespace-nowrap ${isDark ? 'text-zinc-400' : 'text-zinc-700'}`}>
-          Тираж редактор Т-90 турбо
-        </span>
+        <button
+          type="button"
+          onClick={handleModuleLabelClick}
+          onDoubleClick={handleModuleLabelDoubleClick}
+          className={`text-[9px] font-black uppercase tracking-wider leading-none whitespace-nowrap rounded px-1.5 py-0.5 transition-colors ${isDark ? 'text-zinc-400 hover:text-zinc-200 hover:bg-white/5' : 'text-zinc-700 hover:bg-zinc-100'}`}
+          title="Одинарный клик: паспорт модуля • Двойной клик: открыть модуль"
+        >
+          Тираж Редактор Т-90 Турбо
+        </button>
       </div>
 
       <nav ref={navRef} className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 whitespace-nowrap">
@@ -214,6 +311,17 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
           )}
         </div>
       </div>
+
+      <ModulePassportModal
+        isOpen={isPassportOpen}
+        loading={isPassportLoading}
+        theme={theme}
+        passport={passportData}
+        onClose={() => setIsPassportOpen(false)}
+        onOpenModule={openModuleNow}
+        onOpenHistory={handleOpenHistory}
+        onCopyDetails={handleCopyPassport}
+      />
     </header>
   );
 };

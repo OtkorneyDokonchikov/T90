@@ -37,3 +37,43 @@ export interface WorkspaceState {
   theme: Theme;
   selectedPage: number;
 }
+
+export type ModuleVersionStatusKind = 'actual' | 'update_available' | 'conflict' | 'offline';
+
+export interface ModuleResponsibles {
+  owner?: string;
+  designEngineer?: string;
+  leadDeveloper?: string;
+  technicalCurator?: string;
+}
+
+export interface ModuleManifest {
+  moduleId: string;
+  moduleName?: string;
+  status?: string;
+  version?: string;
+  lastModified?: string;
+  build?: string;
+  source?: string;
+  designBureau?: string;
+  integration?: string;
+  approvalBadge?: string;
+  approvalNote?: string;
+  iconPath?: string;
+  integrations?: Array<{
+    name?: string;
+    version?: string;
+  }>;
+  responsibles?: ModuleResponsibles;
+  description?: string;
+  iconGlyph?: string;
+}
+
+export interface ModulePassportResolved {
+  manifest: ModuleManifest;
+  statusKind: ModuleVersionStatusKind;
+  statusText: string;
+  sourceMode: 'local' | 'remote';
+  remoteVersion?: string;
+  lastSyncAt: string;
+}
