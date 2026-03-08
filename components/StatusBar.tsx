@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Theme } from '../types';
 
 interface StatusBarProps {
@@ -26,6 +26,24 @@ type WindowWithMemory = Window & {
 type ProcessWithMemory = {
   memoryUsage?: () => { rss?: number; heapUsed?: number };
 };
+
+type MetricsMode = 'real' | 'mock';
+
+interface RuntimeMetrics {
+  latencyMs: number;
+  gpuPercent: number;
+  ramLabel: string;
+  ramPercent: number;
+  mode: MetricsMode;
+}
+
+interface RealMetricsPayload {
+  latencyMs?: number;
+  gpuPercent?: number;
+  ramBytes?: number;
+  ramPercent?: number;
+  ramTotalBytes?: number;
+}
 
 const formatMemory = (bytes: number): string => {
   const mb = bytes / (1024 * 1024);
@@ -56,6 +74,108 @@ const readMemoryUsage = (): MemoryState => {
   }
 };
 
+const readMemoryBytes = (): number | null => {
+  try {
+    const processCandidate = (globalThis as unknown as { process?: ProcessWithMemory }).process;
+    if (processCandidate?.memoryUsage) {
+      const usage = processCandidate.memoryUsage();
+      const bytes = usage.heapUsed ?? usage.rss;
+      if (typeof bytes === 'number' && Number.isFinite(bytes)) return bytes;
+    }
+
+    const win = window as WindowWithMemory;
+    const browserBytes = win.performance?.memory?.usedJSHeapSize;
+    if (typeof browserBytes === 'number' && Number.isFinite(browserBytes)) return browserBytes;
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const readTotalMemoryBytes = (): number | null => {
+  try {
+    const nav = navigator as Navigator & { deviceMemory?: number };
+    if (typeof nav.deviceMemory === 'number' && Number.isFinite(nav.deviceMemory) && nav.deviceMemory > 0) {
+      return nav.deviceMemory * 1024 * 1024 * 1024;
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+};
+
+const clamp = (value: number, min: number, max: number): number => Math.max(min, Math.min(max, value));
+
+const withJitter = (current: number, delta: number, min: number, max: number): number => {
+  const shift = (Math.random() * 2 - 1) * delta;
+  return Math.round(clamp(current + shift, min, max));
+};
+
+const resolveRamPercent = (usedBytes: number | null, explicitPercent?: number, explicitTotalBytes?: number): number | null => {
+  if (typeof explicitPercent === 'number' && Number.isFinite(explicitPercent)) {
+    return Math.round(clamp(explicitPercent, 0, 100));
+  }
+
+  if (typeof usedBytes !== 'number' || !Number.isFinite(usedBytes) || usedBytes < 0) return null;
+
+  const totalBytes =
+    typeof explicitTotalBytes === 'number' && Number.isFinite(explicitTotalBytes) && explicitTotalBytes > 0
+      ? explicitTotalBytes
+      : readTotalMemoryBytes();
+
+  if (!totalBytes) return null;
+
+  return Math.round(clamp((usedBytes / totalBytes) * 100, 0, 100));
+};
+
+const buildMockMetrics = (prev: RuntimeMetrics): RuntimeMetrics => {
+  const latencyMs = withJitter(prev.latencyMs, 6, 12, 45);
+  const gpuPercent = withJitter(prev.gpuPercent, 5, 14, 48);
+  const ramPercent = withJitter(prev.ramPercent, 5, 50, 84);
+  const mockTotalBytes = 2 * 1024 * 1024 * 1024;
+  const ramLabel = formatMemory((mockTotalBytes * ramPercent) / 100);
+
+  return {
+    latencyMs,
+    gpuPercent,
+    ramLabel,
+    ramPercent,
+    mode: 'mock',
+  };
+};
+
+const readRealMetrics = (): Partial<RuntimeMetrics> | null => {
+  try {
+    const candidate = (globalThis as unknown as { __T90_REAL_METRICS__?: RealMetricsPayload }).__T90_REAL_METRICS__;
+    if (!candidate) return null;
+
+    const next: Partial<RuntimeMetrics> = { mode: 'real' };
+
+    if (typeof candidate.latencyMs === 'number' && Number.isFinite(candidate.latencyMs)) {
+      next.latencyMs = Math.round(clamp(candidate.latencyMs, 1, 999));
+    }
+
+    if (typeof candidate.gpuPercent === 'number' && Number.isFinite(candidate.gpuPercent)) {
+      next.gpuPercent = Math.round(clamp(candidate.gpuPercent, 0, 100));
+    }
+
+    if (typeof candidate.ramBytes === 'number' && Number.isFinite(candidate.ramBytes)) {
+      next.ramLabel = formatMemory(candidate.ramBytes);
+    }
+
+    const ramPercent = resolveRamPercent(candidate.ramBytes ?? null, candidate.ramPercent, candidate.ramTotalBytes);
+    if (typeof ramPercent === 'number') {
+      next.ramPercent = ramPercent;
+    }
+
+    return next;
+  } catch {
+    return null;
+  }
+};
+
 const StatusBar: React.FC<StatusBarProps> = ({
   isVoiceActive,
   setIsVoiceActive,
@@ -68,7 +188,15 @@ const StatusBar: React.FC<StatusBarProps> = ({
   const isDark = theme === 'dark';
   const [saveCountdown, setSaveCountdown] = useState(10);
   const [isSaving, setIsSaving] = useState(false);
-  const [memoryUsage, setMemoryUsage] = useState<MemoryState>('N/A');
+  const [runtimeMetrics, setRuntimeMetrics] = useState<RuntimeMetrics>({
+    latencyMs: 18,
+    gpuPercent: 22,
+    ramLabel: 'N/A',
+    ramPercent: 52,
+    mode: 'mock',
+  });
+
+  const metricsSeededRef = useRef(false);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -86,13 +214,49 @@ const StatusBar: React.FC<StatusBarProps> = ({
   }, []);
 
   useEffect(() => {
-    setMemoryUsage(readMemoryUsage());
-    const memoryTimer = setInterval(() => {
-      setMemoryUsage(readMemoryUsage());
+    if (!metricsSeededRef.current) {
+      const realMemoryBytes = readMemoryBytes();
+      const ramPercent = resolveRamPercent(realMemoryBytes);
+      setRuntimeMetrics((prev) => ({
+        ...prev,
+        ramLabel: realMemoryBytes ? formatMemory(realMemoryBytes) : readMemoryUsage(),
+        ramPercent: ramPercent ?? prev.ramPercent,
+      }));
+      metricsSeededRef.current = true;
+    }
+
+    const metricsTimer = setInterval(() => {
+      setRuntimeMetrics((prev) => {
+        const real = readRealMetrics();
+        const realMemoryBytes = readMemoryBytes();
+        const detectedRamPercent = resolveRamPercent(realMemoryBytes);
+
+        if (real) {
+          return {
+            latencyMs: real.latencyMs ?? prev.latencyMs,
+            gpuPercent: real.gpuPercent ?? prev.gpuPercent,
+            ramLabel: real.ramLabel ?? (realMemoryBytes ? formatMemory(realMemoryBytes) : prev.ramLabel),
+            ramPercent: real.ramPercent ?? detectedRamPercent ?? prev.ramPercent,
+            mode: 'real',
+          };
+        }
+
+        const mockBase = buildMockMetrics(prev.mode === 'mock' ? prev : { ...prev, mode: 'mock' });
+        const ramLabel = realMemoryBytes ? formatMemory(realMemoryBytes) : mockBase.ramLabel;
+        const ramPercent = detectedRamPercent ?? mockBase.ramPercent;
+
+        return {
+          ...mockBase,
+          ramLabel,
+          ramPercent,
+        };
+      });
     }, 1500);
 
-    return () => clearInterval(memoryTimer);
+    return () => clearInterval(metricsTimer);
   }, []);
+
+  const ramValueColorClass = runtimeMetrics.ramPercent > 70 ? 'text-yellow-400' : 'text-green-500';
 
   return (
     <footer className={`h-8 border-t flex items-center justify-between px-3 text-[10px] font-medium z-50 transition-colors relative ${isDark ? 'bg-[#111] border-white/10 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-500'}`}>
@@ -167,15 +331,15 @@ const StatusBar: React.FC<StatusBarProps> = ({
         <div className="flex items-center gap-3 text-[10px]">
           <div className="flex items-center gap-1">
             <span className={isDark ? 'text-zinc-600' : 'text-zinc-400'}>Задержка:</span>
-            <span className={`font-mono ${isDark ? 'text-zinc-400' : 'text-zinc-800'}`}>14мс</span>
+            <span className="font-mono tabular-nums min-w-[46px] text-right text-green-500">{runtimeMetrics.latencyMs}мс</span>
           </div>
           <div className="flex items-center gap-1">
             <span className={isDark ? 'text-zinc-600' : 'text-zinc-400'}>GPU:</span>
-            <span className="font-mono text-green-500">22%</span>
+            <span className="font-mono tabular-nums min-w-[36px] text-right text-green-500">{runtimeMetrics.gpuPercent}%</span>
           </div>
           <div className="flex items-center gap-1">
             <span className={isDark ? 'text-zinc-600' : 'text-zinc-400'}>RAM</span>
-            <span className={`font-mono ${isDark ? 'text-zinc-300' : 'text-zinc-700'}`}>{memoryUsage}</span>
+            <span className={`font-mono tabular-nums min-w-[66px] text-right ${ramValueColorClass}`}>{runtimeMetrics.ramLabel}</span>
           </div>
         </div>
       </div>

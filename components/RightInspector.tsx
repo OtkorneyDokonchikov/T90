@@ -37,12 +37,12 @@ const RightInspector: React.FC<RightInspectorProps> = ({ isVoiceActive, setIsVoi
 
   return (
     <aside className={`w-72 border-l flex flex-col transition-colors ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-zinc-200'}`}>
-      <div className="flex-1 overflow-y-auto custom-scrollbar p-5 space-y-8">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-5">
         
         {/* МОДУЛЬ: Голосовое управление */}
-        <div className="space-y-4">
-          <section className={`border rounded-xl p-3 shadow-inner transition-colors ${isDark ? 'bg-zinc-900/50 border-white/5' : 'bg-zinc-50 border-zinc-200/50'}`}>
-            <div className="flex items-center justify-between mb-3">
+        <div className="space-y-3">
+          <section className={`border rounded-xl p-2.5 shadow-inner transition-colors ${isDark ? 'bg-zinc-900/50 border-white/5' : 'bg-zinc-50 border-zinc-200/50'}`}>
+            <div className="flex items-center justify-between mb-2">
               <span className={`text-[11px] font-semibold ${isDark ? 'text-zinc-400' : 'text-zinc-500'}`}>Голосовое управление</span>
               <div 
                 onClick={() => setIsVoiceActive(!isVoiceActive)}
@@ -60,12 +60,12 @@ const RightInspector: React.FC<RightInspectorProps> = ({ isVoiceActive, setIsVoi
               </div>
             </div>
             
-            <div className={`flex flex-col items-center justify-center py-4 border border-dashed rounded-lg transition-all duration-300 ${isVoiceActive ? 'border-green-500/40 bg-green-500/5 shadow-[inset_0_0_12px_rgba(34,197,94,0.05)]' : (isDark ? 'border-zinc-800 bg-zinc-800/20' : 'border-zinc-200 bg-white')}`}>
-              <div className={`relative mb-2 transition-colors duration-300 ${isVoiceActive ? 'text-green-500' : (isDark ? 'text-zinc-600' : 'text-zinc-300')}`}>
+            <div className={`flex flex-col items-center justify-center py-2.5 border border-dashed rounded-lg transition-all duration-300 ${isVoiceActive ? 'border-green-500/40 bg-green-500/5 shadow-[inset_0_0_12px_rgba(34,197,94,0.05)]' : (isDark ? 'border-zinc-800 bg-zinc-800/20' : 'border-zinc-200 bg-white')}`}>
+              <div className={`relative mb-1.5 transition-colors duration-300 ${isVoiceActive ? 'text-green-500' : (isDark ? 'text-zinc-600' : 'text-zinc-300')}`}>
                 <MicIcon large active={isVoiceActive} />
                 {isVoiceActive && <div className="absolute inset-0 animate-ping opacity-25 text-green-500"><MicIcon large active={false} /></div>}
               </div>
-              <span className={`text-[9px] px-2 text-center uppercase font-black tracking-[0.15em] transition-colors duration-300 ${isVoiceActive ? 'text-green-500' : (isDark ? 'text-zinc-500' : 'text-zinc-400')}`}>
+              <span className={`text-[8px] px-2 text-center uppercase font-black tracking-[0.14em] transition-colors duration-300 ${isVoiceActive ? 'text-green-500' : (isDark ? 'text-zinc-500' : 'text-zinc-400')}`}>
                 {isVoiceActive ? 'СЛУШАЮ И ПОВИНУЮСЬ' : 'ОЖИДАНИЕ'}
               </span>
             </div>
@@ -121,9 +121,9 @@ const RightInspector: React.FC<RightInspectorProps> = ({ isVoiceActive, setIsVoi
         </div>
 
         {/* СЕКЦИЯ: Настройки распознавания */}
-        <section className="space-y-4 pt-2 border-t border-dashed border-zinc-800/50">
-          <label className={`text-[9px] uppercase font-bold block ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>Настройки распознавания</label>
-          <div className="space-y-4">
+        <section className={`space-y-3 border rounded-xl p-3 shadow-inner transition-colors ${isDark ? 'bg-zinc-900/45 border-white/5' : 'bg-zinc-50 border-zinc-200/60'}`}>
+          <label className={`text-[9px] uppercase font-bold block ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>Настройки распознавания</label>
+          <div className="space-y-3">
             <div className="space-y-1.5">
               <div className={`flex justify-between text-[9px] ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
                 <span className="font-medium">Чувствительность</span>

@@ -30,9 +30,10 @@ interface DragState {
 const DPI = 96;
 const RULER_THICKNESS = 26;
 const TOOL_DOCK_HEIGHT = 40;
-const BOTTOM_DOCK_BOTTOM = 24;
 const BOTTOM_DOCK_HEIGHT = 40;
-const SAFE_AREA_GAP = 16;
+const PANEL_GAP = 16;
+const WORKSPACE_SAFE_MARGIN = 16;
+const BOTTOM_DOCK_BOTTOM = 16;
 const BASE_FIT_REFERENCE = 1;
 
 const unitToPx = (value: number, unit: Unit): number => {
@@ -110,8 +111,8 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
   const baseLandscape = { width: 1100, height: 780 };
   const basePage = pageOrientation === 'portrait' ? basePortrait : baseLandscape;
   const workspaceOffset = rulerEnabled ? RULER_THICKNESS : 0;
-  const safeTopPadding = workspaceOffset + TOOL_DOCK_HEIGHT + SAFE_AREA_GAP * 2;
-  const safeBottomPadding = BOTTOM_DOCK_HEIGHT + BOTTOM_DOCK_BOTTOM + SAFE_AREA_GAP;
+  const safeTopPadding = workspaceOffset + TOOL_DOCK_HEIGHT + PANEL_GAP + WORKSPACE_SAFE_MARGIN;
+  const safeBottomPadding = BOTTOM_DOCK_HEIGHT + PANEL_GAP + WORKSPACE_SAFE_MARGIN;
 
   const availableContentWidth = Math.max(0, workspaceSize.width - workspaceOffset);
   const availableContentHeight = Math.max(0, workspaceSize.height - workspaceOffset - safeTopPadding - safeBottomPadding);
@@ -139,7 +140,7 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
 
   const workspaceInnerWidth = Math.max(0, workspaceSize.width - workspaceOffset);
   const workspaceInnerHeight = Math.max(0, workspaceSize.height - workspaceOffset);
-  const overlaysCenterX = workspaceOffset + workspaceInnerWidth / 2;
+  const workspaceCenterX = workspaceOffset + workspaceInnerWidth / 2;
 
   useEffect(() => {
     const node = rootRef.current;
@@ -393,13 +394,6 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
       )}
 
       <div
-        className="absolute z-40"
-        style={{ left: overlaysCenterX, top: workspaceOffset + SAFE_AREA_GAP, transform: 'translateX(-50%)' }}
-      >
-        <ToolDock activeTool={activeTool} onToolSelect={onToolSelect} theme={theme} />
-      </div>
-
-      <div
         className="flex-1 overflow-auto custom-scrollbar flex flex-col items-center relative"
         style={{
           paddingTop: safeTopPadding,
@@ -407,20 +401,26 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
         }}
       >
         <div
-          className="relative flex flex-col items-center flex-shrink-0"
-          style={{ width: pageWidth }}
+          className="relative flex-shrink-0"
+          style={{ width: pageWidth, height: pageHeight }}
         >
+          <div
+            className="absolute left-1/2 z-40"
+            style={{ bottom: `calc(100% + ${PANEL_GAP}px)`, transform: 'translateX(-50%)' }}
+          >
+            <ToolDock activeTool={activeTool} onToolSelect={onToolSelect} theme={theme} />
+          </div>
+
           <div
             ref={pageFrameRef}
             className={`border transition-[width,height] duration-300 ease-out relative overflow-hidden flex flex-col flex-shrink-0 ${isDark ? 'bg-white border-zinc-400 shadow-[0_40px_100px_rgba(0,0,0,0.8)]' : 'bg-white border-zinc-300 shadow-2xl'}`}
             style={{ width: pageWidth, height: pageHeight }}
           >
-            <div className="absolute top-0 left-0 right-0 p-10 flex justify-between items-start z-10 pointer-events-none">
+            <div className="absolute top-0 left-0 right-0 p-10 flex justify-start items-start z-10 pointer-events-none">
               <div className="flex flex-col gap-2">
                 <span className="text-[14px] font-black uppercase tracking-[0.4em] text-zinc-400">MASTER VIEW</span>
                 <span className="text-[10px] font-mono text-zinc-500 opacity-60">29.7 CM • ISO 216</span>
               </div>
-              <button className="px-10 py-2.5 rounded-2xl border-2 border-blue-500/30 bg-blue-500/5 text-blue-600 text-[12px] font-black uppercase tracking-widest transition-all">ВЫБОР</button>
             </div>
 
             <div className="flex-1 relative p-12 flex flex-col items-center justify-center">
@@ -444,25 +444,30 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
               </div>
             </div>
           </div>
+
+          <div
+            className="absolute left-1/2 z-40"
+            style={{ top: `calc(100% + ${PANEL_GAP}px)`, transform: 'translateX(-50%)' }}
+          />
         </div>
       </div>
 
       <div
-        className={`absolute z-40 flex items-center gap-1.5 backdrop-blur-2xl border p-1.5 rounded-2xl shadow-2xl ${isDark ? 'bg-[#181818]/95 border-white/10' : 'bg-white/95 border-zinc-200'}`}
-        style={{ left: overlaysCenterX, bottom: BOTTOM_DOCK_BOTTOM, transform: 'translateX(-50%)' }}
+        className={`absolute z-40 w-[228px] flex items-center justify-center gap-1.5 backdrop-blur-2xl border p-1.5 rounded-2xl shadow-2xl transition-all duration-500 ease-in-out ${isDark ? 'bg-[#181818]/95 border-white/10' : 'bg-white/95 border-zinc-200'}`}
+        style={{ left: workspaceCenterX, bottom: BOTTOM_DOCK_BOTTOM, transform: 'translateX(-50%)' }}
       >
-        <button onClick={() => setZoom((z) => Math.max(10, z - 10))} className="p-2 text-zinc-500 hover:text-white">-</button>
-        <div className="text-[11px] font-black min-w-[50px] text-center">{zoom}%</div>
-        <button onClick={() => setZoom((z) => Math.min(400, z + 10))} className="p-2 text-zinc-500 hover:text-white">+</button>
-        <div className="w-px h-4 bg-zinc-700 mx-1" />
+            <button onClick={() => setZoom((z) => Math.max(10, z - 10))} className="p-1.5 text-zinc-500 hover:text-white">-</button>
+            <div className="text-[11px] font-black min-w-[50px] text-center">{zoom}%</div>
+            <button onClick={() => setZoom((z) => Math.min(400, z + 10))} className="p-1.5 text-zinc-500 hover:text-white">+</button>
+            <div className="w-px h-4 bg-zinc-700 mx-1" />
 
-        <button
-          onClick={() => setPageOrientation((p) => (p === 'portrait' ? 'landscape' : 'portrait'))}
-          className={`p-1.5 rounded transition-colors duration-150 ${isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
-          title="Ориентация страницы"
-        >
-          {pageOrientation === 'portrait' ? <PortraitIcon /> : <LandscapeIcon />}
-        </button>
+            <button
+              onClick={() => setPageOrientation((p) => (p === 'portrait' ? 'landscape' : 'portrait'))}
+              className={`p-1.5 rounded-xl transition-colors duration-150 ${isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
+              title="Ориентация страницы"
+            >
+              {pageOrientation === 'portrait' ? <PortraitIcon /> : <LandscapeIcon />}
+            </button>
       </div>
 
       {rulerEnabled && (
