@@ -6,7 +6,6 @@ interface TopBarProps {
   onRoleChange: (role: UserRole) => void;
   scenario: AppScenario;
   onScenarioChange: (scenario: AppScenario) => void;
-  onQualityControlToggle: () => void;
   theme: Theme;
   toggleTheme: () => void;
 }
@@ -81,14 +80,17 @@ const scenarioMenus: Record<AppScenario, { label: string; icon: React.ReactNode;
     { label: 'Экспорт меток', icon: <ExportIcon />, desc: 'Отдельно' },
   ],
   [AppScenario.QUALITY_CONTROL]: [
-    { label: 'Верификация', icon: <ShieldIcon />, desc: 'Финальный контроль' },
-    { label: 'Отчет', icon: <AlertIcon />, desc: 'Сводка замечаний' },
-    { label: 'Статистика', icon: <StatsIcon />, desc: 'Анализ точности' },
-    { label: 'Сверка', icon: <CompareIcon />, desc: 'С эталоном' },
+    { label: 'Анализ TIFF', icon: <StatsIcon />, desc: 'Загрузка и структура', shortcut: '100%' },
+    { label: 'Качество OCR', icon: <CheckIcon />, desc: 'Оценка плотности текста', shortcut: '100%' },
+    { label: 'Сегментация', icon: <AlertIcon />, desc: 'Текст / Изображения', shortcut: '67%' },
+    { label: 'Цвет и Режим', icon: <ShieldIcon />, desc: 'Проверка профилей TIFF', shortcut: 'В работе' },
+    { label: 'Дефекты скана', icon: <AlertIcon />, desc: 'Шум, перекос, пятна', shortcut: 'Ожидание' },
+    { label: 'Preflight', icon: <CompareIcon />, desc: 'Финальный контроль', shortcut: 'Ожидание' },
+    { label: 'Результат', icon: <ExportIcon />, desc: 'Отчёт и подсветка', shortcut: 'Ожидание' },
   ],
 };
 
-const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenarioChange, onQualityControlToggle, theme, toggleTheme }) => {
+const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenarioChange, theme, toggleTheme }) => {
   const isDark = theme === 'dark';
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
@@ -110,12 +112,6 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
   }, []);
 
   const handleScenarioClick = (s: AppScenario) => {
-    if (s === AppScenario.QUALITY_CONTROL) {
-      onQualityControlToggle();
-      setOpenMenu(null);
-      return;
-    }
-
     if (openMenu === s) setOpenMenu(null);
     else {
       setOpenMenu(s);
@@ -157,23 +153,22 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
       <nav ref={navRef} className="absolute left-1/2 -translate-x-1/2 flex items-center gap-0.5 whitespace-nowrap">
         {Object.keys(AppScenario).map((key) => {
           const s = AppScenario[key as keyof typeof AppScenario];
-          const isQcButton = s === AppScenario.QUALITY_CONTROL;
 
           return (
             <div key={s} className="relative">
               <button
                 onClick={() => handleScenarioClick(s)}
                 className={`px-2 py-1 text-[9px] rounded transition-all uppercase tracking-wide font-bold flex items-center gap-1 ${
-                  scenario === s && !isQcButton
+                  scenario === s
                     ? (isDark ? 'bg-white/10 text-white' : 'bg-blue-600 text-white')
                     : (isDark ? 'text-zinc-500 hover:text-zinc-300' : 'text-zinc-400 hover:text-zinc-700')
                 }`}
               >
                 {scenarioLabels[s]}
-                {!isQcButton && <ChevronDownIcon small />}
+                <ChevronDownIcon small />
               </button>
 
-              {!isQcButton && openMenu === s && (
+              {openMenu === s && (
                 <div className={`absolute top-full left-0 mt-1.5 w-56 rounded-lg border p-1 shadow-2xl backdrop-blur-3xl animate-in fade-in zoom-in-95 duration-200 z-[110] ${isDark ? 'bg-[#1a1a1a] border-white/10 text-zinc-300' : 'bg-white border-zinc-200 text-zinc-700'}`}>
                   {scenarioMenus[s].map((item, idx) => (
                     <button key={idx} onClick={() => setOpenMenu(null)} className="w-full flex items-center gap-2 px-2 py-2 rounded-md text-left transition-all hover:bg-white/5 group">
@@ -182,6 +177,7 @@ const TopBar: React.FC<TopBarProps> = ({ role, onRoleChange, scenario, onScenari
                         <span className="text-[11px] font-bold group-hover:text-white leading-tight">{item.label}</span>
                         <span className="text-[9px] opacity-40 truncate">{item.desc}</span>
                       </div>
+                      {item.shortcut && <span className="text-[9px] font-mono opacity-40">{item.shortcut}</span>}
                     </button>
                   ))}
                 </div>

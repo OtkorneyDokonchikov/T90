@@ -3,7 +3,6 @@ import { UserRole, ToolType, AppScenario, WorkspaceState } from './types';
 import TopBar from './components/TopBar';
 import LeftSidebar from './components/LeftSidebar';
 import RightInspector from './components/RightInspector';
-import ToolDock from './components/ToolDock';
 import Canvas from './components/Canvas';
 import StatusBar from './components/StatusBar';
 
@@ -26,10 +25,6 @@ const App: React.FC = () => {
 
   const handleScenarioChange = useCallback((s: AppScenario) => {
     setState(prev => ({ ...prev, scenario: s }));
-  }, []);
-
-  const handleQualityControlToggle = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('t90:toggle-quality-control'));
   }, []);
 
   const toggleTheme = () => {
@@ -67,7 +62,6 @@ const App: React.FC = () => {
         onRoleChange={(r) => updateState('role', r)}
         scenario={state.scenario}
         onScenarioChange={handleScenarioChange}
-        onQualityControlToggle={handleQualityControlToggle}
         theme={state.theme}
         toggleTheme={toggleTheme}
       />
@@ -82,14 +76,10 @@ const App: React.FC = () => {
         />
 
         <main className={`flex-1 flex flex-col relative ${isDark ? 'bg-[#0d0d0d]' : 'bg-zinc-100/50'}`}>
-          <ToolDock
-            activeTool={state.activeTool}
-            onToolSelect={(t) => updateState('activeTool', t)}
-            theme={state.theme}
-          />
           <Canvas
             scenario={state.scenario}
             activeTool={state.activeTool}
+            onToolSelect={(t) => updateState('activeTool', t)}
             onAction={addHistory}
             theme={state.theme}
           />

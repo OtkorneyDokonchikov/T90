@@ -9,31 +9,13 @@ interface LeftSidebarProps {
   theme: Theme;
 }
 
-interface Step {
-  id: string;
-  label: string;
-  desc: string;
-  status: 'done' | 'warning' | 'active' | 'pending';
-}
-
 const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPage, onPageSelect, theme }) => {
   const isDark = theme === 'dark';
   const pageListRef = useRef<HTMLDivElement>(null);
   const [isStructureOpen, setIsStructureOpen] = useState(true);
-  const [sidebarSections, setSidebarSections] = useState({ qualityControlOpen: false });
 
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set(['processed']));
   const [activeId, setActiveId] = useState<string>('processed');
-
-  const steps: Step[] = [
-    { id: '1', label: 'Анализ TIFF', desc: 'Загрузка и структура', status: 'done' },
-    { id: '2', label: 'Качество OCR', desc: 'Оценка плотности текста', status: 'done' },
-    { id: '3', label: 'Сегментация', desc: 'Текст / Изображения', status: 'warning' },
-    { id: '4', label: 'Цвет и Режим', desc: 'Проверка профилей TIFF', status: 'active' },
-    { id: '5', label: 'Дефекты скана', desc: 'Шум, перекос, пятна', status: 'pending' },
-    { id: '6', label: 'Preflight', desc: 'Финальный контроль', status: 'pending' },
-    { id: '7', label: 'Результат', desc: 'Отчёт и подсветка', status: 'pending' },
-  ];
 
   const folders = [
     { id: 'root', name: 'Корневой проект', items: 124, subfolders: ['Дело №1', 'Дело №2', 'Дело №3'] },
@@ -57,15 +39,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
       if (activeEl) activeEl.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
   }, [selectedPage, isStructureOpen]);
-
-  useEffect(() => {
-    const handler = () => {
-      setSidebarSections((prev) => ({ ...prev, qualityControlOpen: !prev.qualityControlOpen }));
-    };
-
-    window.addEventListener('t90:toggle-quality-control', handler as EventListener);
-    return () => window.removeEventListener('t90:toggle-quality-control', handler as EventListener);
-  }, []);
 
   return (
     <aside className={`border-r transition-all duration-300 flex flex-col ${isOpen ? 'w-72' : 'w-12'} ${isDark ? 'bg-[#111] border-white/5' : 'bg-white border-zinc-200'}`}>
@@ -99,44 +72,6 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
                   )}
                 </div>
               ))}
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setSidebarSections((prev) => ({ ...prev, qualityControlOpen: !prev.qualityControlOpen }))}
-              className={`px-4 py-2 border-t mt-1 flex items-center justify-between cursor-pointer transition-colors ${isDark ? 'border-white/5 hover:bg-white/5' : 'border-zinc-100 hover:bg-zinc-50'}`}
-            >
-              <div className="flex items-center gap-2">
-                <span className={`transition-transform duration-150 ${sidebarSections.qualityControlOpen ? 'rotate-0' : '-rotate-90'}`}><ChevronDown size={10} /></span>
-                <span className="text-[9px] uppercase font-black opacity-50">Контроль качества</span>
-              </div>
-              <span className="text-[8px] font-mono opacity-40">100%</span>
-            </button>
-
-            <div
-              className="overflow-hidden transition-[max-height,opacity] duration-150 ease-out border-b border-white/5"
-              style={{ maxHeight: sidebarSections.qualityControlOpen ? '260px' : '0px', opacity: sidebarSections.qualityControlOpen ? 1 : 0 }}
-            >
-              <div className="px-4 py-3 flex flex-col gap-3">
-                {steps.map((step) => (
-                  <div key={step.id} className="flex gap-3 group cursor-pointer">
-                    <div className="relative flex flex-col items-center">
-                      <div className={`w-3 h-3 rounded-full mt-1 flex items-center justify-center transition-all ${
-                        step.status === 'done' ? 'bg-green-500 shadow-[0_0_6px_rgba(34,197,94,0.4)]' :
-                        step.status === 'warning' ? 'bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]' :
-                        step.status === 'active' ? 'border-2 border-blue-500 animate-pulse' : 'border-2 border-zinc-800'
-                      }`}>
-                        {step.status === 'active' && <div className="w-0.5 h-0.5 bg-blue-500 rounded-full" />}
-                      </div>
-                      <div className="w-px flex-1 bg-zinc-800/50 my-1 group-last:hidden" />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className={`text-[11px] font-bold ${step.status === 'pending' ? 'text-zinc-600' : 'text-zinc-300'}`}>{step.label}</span>
-                      <span className="text-[9px] text-zinc-500 opacity-50">{step.desc}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div onClick={() => setIsStructureOpen(!isStructureOpen)} className={`px-4 py-1.5 border-t mt-1 flex items-center justify-between cursor-pointer ${isDark ? 'border-white/5' : 'border-zinc-100'}`}>

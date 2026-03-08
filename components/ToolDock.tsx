@@ -29,10 +29,8 @@ const ToolDock: React.FC<ToolDockProps> = ({ activeTool, onToolSelect, theme }) 
     { type: ToolType.TEXT, icon: <TextIcon /> },
   ];
 
-  const topPosition = 'top-[48px]';
-
   return (
-    <div className={`absolute ${topPosition} left-1/2 -translate-x-1/2 flex items-center gap-1.5 backdrop-blur-2xl border p-1.5 rounded-2xl shadow-2xl z-40 transition-all duration-500 ease-in-out ${isDark ? 'bg-[#181818]/95 border-white/10' : 'bg-white/95 border-zinc-200'}`}>
+    <div className={`flex items-center gap-1.5 backdrop-blur-2xl border p-1.5 rounded-2xl shadow-2xl transition-all duration-500 ease-in-out ${isDark ? 'bg-[#181818]/95 border-white/10' : 'bg-white/95 border-zinc-200'}`}>
       <div className="flex items-center gap-0.5">
         {tools.map((tool) => (
           <button
