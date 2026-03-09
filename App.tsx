@@ -7,6 +7,7 @@ import Canvas from './components/Canvas';
 import StatusBar from './components/StatusBar';
 import DocumentTemplateModal from './components/DocumentTemplateModal';
 import QcResultModal from './components/QcResultModal';
+import WorkstationLockOverlay, { LockSessionSnapshot } from './components/WorkstationLockOverlay';
 
 const App: React.FC = () => {
   const [state, setState] = useState<WorkspaceState>({
@@ -23,6 +24,10 @@ const App: React.FC = () => {
   const [isTemplateModalOpen, setIsTemplateModalOpen] = useState(false);
   const [documentConfig, setDocumentConfig] = useState<DocumentTemplateConfig | null>(null);
   const [isQcResultModalOpen, setIsQcResultModalOpen] = useState(false);
+  const [isLockConfirmOpen, setIsLockConfirmOpen] = useState(false);
+  const [isWorkstationLocked, setIsWorkstationLocked] = useState(false);
+  const [lockedAt, setLockedAt] = useState<string>('');
+  const [lockSnapshot, setLockSnapshot] = useState<LockSessionSnapshot | null>(null);
 
   const qcResult: QcResultSummary = {
     documentNumber: '126',
@@ -85,6 +90,63 @@ const App: React.FC = () => {
     setIsTemplateModalOpen(false);
   }, [addHistory]);
 
+  const nowLabel = () => new Date().toLocaleString('ru-RU');
+
+  const requestLockWorkstation = () => {
+    setIsLockConfirmOpen(true);
+  };
+
+  const confirmLockWorkstation = () => {
+    const snapshot: LockSessionSnapshot = {
+      page: state.selectedPage,
+      zoom: 100,
+      scenario: state.scenario,
+      hasInProgressTasks: true,
+      panels: {
+        leftSidebarOpen: state.isSidebarOpen,
+        voiceActive: state.isVoiceActive,
+      },
+      autosavedAt: nowLabel(),
+    };
+
+    setLockSnapshot(snapshot);
+    setLockedAt(nowLabel());
+    setIsLockConfirmOpen(false);
+    setIsWorkstationLocked(true);
+    setIsTemplateModalOpen(false);
+    setIsQcResultModalOpen(false);
+
+    addHistory(`Автосохранение перед блокировкой: стр. ${snapshot.page}, сценарий ${snapshot.scenario}`);
+    addHistory('Рабочее место заблокировано');
+    updateState('isVoiceActive', false);
+  };
+
+  const unlockWorkstation = () => {
+    setIsWorkstationLocked(false);
+    addHistory('Рабочее место разблокировано');
+  };
+
+  const handleSwitchUser = () => {
+    setIsWorkstationLocked(false);
+    setIsLockConfirmOpen(false);
+    addHistory('Открыт экран входа другого пользователя');
+    updateState('role', UserRole.OPERATOR);
+  };
+
+  const handleFinishShift = () => {
+    const confirmed = window.confirm('Завершить смену и закрыть текущую рабочую сессию?');
+    if (!confirmed) return;
+    setIsWorkstationLocked(false);
+    setIsLockConfirmOpen(false);
+    addHistory('Смена завершена');
+  };
+
+  const handleLogout = () => {
+    setIsWorkstationLocked(false);
+    setIsLockConfirmOpen(false);
+    addHistory('Выполнен выход из системы');
+  };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.altKey && e.key === 'v') updateState('isVoiceActive', !state.isVoiceActive);
@@ -106,11 +168,16 @@ const App: React.FC = () => {
         onScenarioChange={handleScenarioChange}
         onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
         onOpenQcResultModal={() => setIsQcResultModalOpen(true)}
+        onLockWorkstation={requestLockWorkstation}
+        onSwitchUser={handleSwitchUser}
+        onSelectRole={() => addHistory('Открыт выбор роли')}
+        onFinishShift={handleFinishShift}
+        onLogout={handleLogout}
         theme={state.theme}
         toggleTheme={toggleTheme}
       />
 
-      <div className="flex flex-1 relative overflow-hidden">
+      <div className={`flex flex-1 relative overflow-hidden ${isWorkstationLocked ? 'pointer-events-none select-none' : ''}`}>
         <LeftSidebar
           isOpen={state.isSidebarOpen}
           setIsOpen={(v) => updateState('isSidebarOpen', v)}
@@ -147,6 +214,34 @@ const App: React.FC = () => {
         theme={state.theme}
       />
 
+      {isLockConfirmOpen && (
+        <div className="fixed inset-0 z-[260] flex items-center justify-center px-4">
+          <button type="button" className="absolute inset-0 bg-black/70" onClick={() => setIsLockConfirmOpen(false)} />
+          <section className="relative w-full max-w-[460px] rounded-xl border border-white/10 bg-[#121821] text-zinc-200 shadow-[0_30px_100px_rgba(0,0,0,0.68)] p-4">
+            <h3 className="text-[13px] font-bold uppercase tracking-[0.14em]">Заблокировать рабочее место?</h3>
+            <p className="mt-2 text-[11px] leading-5 text-zinc-400">
+              Текущее состояние документа и интерфейса будет сохранено. Доступ к рабочей области будет временно ограничен.
+            </p>
+            <div className="mt-4 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setIsLockConfirmOpen(false)}
+                className="h-8 px-3 rounded-md border border-white/15 text-[10px] font-bold uppercase tracking-wider text-zinc-300"
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                onClick={confirmLockWorkstation}
+                className="h-8 px-3 rounded-md bg-cyan-600 hover:bg-cyan-500 text-[10px] font-bold uppercase tracking-wider text-white"
+              >
+                Заблокировать
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
+
       <DocumentTemplateModal
         isOpen={isTemplateModalOpen}
         theme={state.theme}
@@ -167,6 +262,18 @@ const App: React.FC = () => {
           addHistory(`Результат отправлен: документ №${qcResult.documentNumber ?? 'Не указано'}`);
           setIsQcResultModalOpen(false);
         }}
+      />
+
+      <WorkstationLockOverlay
+        isOpen={isWorkstationLocked}
+        theme={state.theme}
+        operatorName="Кондарев С.А."
+        role={state.role}
+        lockedAt={lockedAt || nowLabel()}
+        snapshot={lockSnapshot}
+        onUnlock={unlockWorkstation}
+        onSwitchUser={handleSwitchUser}
+        onFinishShift={handleFinishShift}
       />
     </div>
   );
