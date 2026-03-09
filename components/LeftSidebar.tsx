@@ -1,5 +1,6 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Theme } from '../types';
+import { CollapsedIconRail, RailItem, SidebarTopToggle } from './SidebarControls';
 
 interface LeftSidebarProps {
   isOpen: boolean;
@@ -10,6 +11,7 @@ interface LeftSidebarProps {
 }
 
 type SectionId = 'scan_sources' | 'local_folders' | 'in_progress_tasks' | 'work_log';
+type LeftRailSectionId = SectionId | 'document_structure' | 'local_storage';
 type SortOrder = 'desc' | 'asc';
 type JournalView = 'all' | 'today' | 'shift' | 'operator' | 'document';
 
@@ -231,7 +233,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(
     new Set(['scan_sources', 'local_folders', 'in_progress_tasks', 'work_log']),
   );
-  const [activeSection, setActiveSection] = useState<SectionId>('scan_sources');
+  const [activeSection, setActiveSection] = useState<LeftRailSectionId>('scan_sources');
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedLocalSourceId, setSelectedLocalSourceId] = useState<string>(localSources[0].id);
   const [journalView, setJournalView] = useState<JournalView>('all');
@@ -240,6 +242,13 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
   const [detailType, setDetailType] = useState<'none' | 'device' | 'task' | 'file' | 'page' | 'journal'>('none');
   const [isDocumentStructureOpen, setIsDocumentStructureOpen] = useState(true);
   const [expandedPages, setExpandedPages] = useState<Set<number>>(new Set([selectedPage]));
+
+  const scanRef = useRef<HTMLDivElement>(null);
+  const localRef = useRef<HTMLDivElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
+  const workLogRef = useRef<HTMLDivElement>(null);
+  const structureRef = useRef<HTMLDivElement>(null);
+  const storageRef = useRef<HTMLDivElement>(null);
 
   const selectedDevice = useMemo(
     () => (selectedDeviceId ? scanDevices.find((device) => device.id === selectedDeviceId) ?? null : null),
@@ -308,16 +317,63 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
     ? 'bg-[#111] border-white/5 text-zinc-300'
     : 'bg-white border-zinc-200 text-zinc-700';
 
+  const railItems: RailItem[] = [
+    { id: 'scan_sources', label: 'Источники сканирования', icon: <ScannerRailIcon /> },
+    { id: 'local_folders', label: 'Локальные папки', icon: <FolderRailIcon /> },
+    { id: 'in_progress_tasks', label: 'Задания в работе', icon: <ClipboardListIcon /> },
+    { id: 'work_log', label: 'Журнал выполненных работ', icon: <FileTextIcon /> },
+    { id: 'document_structure', label: 'Структура документа', icon: <FilesIcon /> },
+    { id: 'local_storage', label: 'Локальное хранилище', icon: <HardDriveIcon /> },
+  ];
+
+  const focusSection = (sectionId: LeftRailSectionId) => {
+    setActiveSection(sectionId);
+
+    if (sectionId === 'scan_sources' || sectionId === 'local_folders' || sectionId === 'in_progress_tasks' || sectionId === 'work_log') {
+      setExpandedSections((prev) => {
+        if (prev.has(sectionId)) return prev;
+        const next = new Set(prev);
+        next.add(sectionId);
+        return next;
+      });
+    }
+
+    if (sectionId === 'document_structure') {
+      setIsDocumentStructureOpen(true);
+    }
+
+    if (!isOpen) {
+      setIsOpen(true);
+      return;
+    }
+
+    const refs: Record<LeftRailSectionId, React.RefObject<HTMLDivElement | null>> = {
+      scan_sources: scanRef,
+      local_folders: localRef,
+      in_progress_tasks: progressRef,
+      work_log: workLogRef,
+      document_structure: structureRef,
+      local_storage: storageRef,
+    };
+
+    refs[sectionId].current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const id = window.requestAnimationFrame(() => focusSection(activeSection));
+    return () => window.cancelAnimationFrame(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isOpen, activeSection]);
+
   return (
-    <aside className={`border-r transition-all duration-300 flex flex-col ${isOpen ? 'w-80' : 'w-12'} ${panelTone}`}>
+    <aside className={`border-r transition-all duration-300 flex flex-col ${isOpen ? 'w-80' : 'w-14'} ${panelTone}`}>
       <div className={`h-11 flex items-center justify-between px-4 border-b ${isDark ? 'border-white/5' : 'border-zinc-100'}`}>
         {isOpen && <span className={`text-[10px] uppercase tracking-widest font-black ${isDark ? 'text-zinc-600' : 'text-zinc-400'}`}>Навигатор</span>}
-        <button onClick={() => setIsOpen(!isOpen)} className="p-1 rounded text-zinc-600 hover:text-white transition-colors">
-          {isOpen ? <CollapseIcon /> : <ExpandIcon />}
-        </button>
+        <SidebarTopToggle side="left" isCollapsed={!isOpen} theme={theme} onToggle={() => setIsOpen(!isOpen)} />
       </div>
 
-      {isOpen && (
+      {isOpen ? (
         <div className="flex-1 overflow-hidden flex flex-col min-h-0">
           <div className="shrink-0 overflow-y-auto custom-scrollbar py-2 max-h-[52%]">
             {sectionMeta.map((section) => {
@@ -325,7 +381,19 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
               const isActive = activeSection === section.id;
 
               return (
-                <div key={section.id} className="mb-1">
+                <div
+                  key={section.id}
+                  ref={
+                    section.id === 'scan_sources'
+                      ? scanRef
+                      : section.id === 'local_folders'
+                        ? localRef
+                        : section.id === 'in_progress_tasks'
+                          ? progressRef
+                          : workLogRef
+                  }
+                  className="mb-1"
+                >
                   <button
                     type="button"
                     onClick={() => toggleSection(section.id)}
@@ -557,7 +625,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
 
           </div>
 
-          <div className={`mx-4 border-t ${isDark ? 'border-white/10' : 'border-zinc-200'} pt-2 flex-1 min-h-0 flex flex-col`}>
+          <div ref={structureRef} className={`mx-4 border-t ${isDark ? 'border-white/10' : 'border-zinc-200'} pt-2 flex-1 min-h-0 flex flex-col`}>
               <button
                 type="button"
                 onClick={() => setIsDocumentStructureOpen((prev) => !prev)}
@@ -646,7 +714,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
             </div>
           )}
 
-          <div className={`p-3 border-t ${isDark ? 'border-white/5' : 'border-zinc-100'}`}>
+          <div ref={storageRef} className={`p-3 border-t ${isDark ? 'border-white/5' : 'border-zinc-100'}`}>
             <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Локальное хранилище</div>
             <div className="text-[10px] flex items-center justify-between font-mono">
               <span className="text-zinc-500">Размер файла</span>
@@ -654,6 +722,13 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
             </div>
           </div>
         </div>
+      ) : (
+        <CollapsedIconRail
+          items={railItems}
+          activeId={activeSection}
+          theme={theme}
+          onItemClick={(id) => focusSection(id as LeftRailSectionId)}
+        />
       )}
     </aside>
   );
@@ -664,19 +739,60 @@ const FolderIcon = () => (
     <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
   </svg>
 );
-const CollapseIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="15 18 9 12 15 6" />
-  </svg>
-);
-const ExpandIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="9 18 15 12 9 6" />
-  </svg>
-);
 const ChevronDown = ({ size = 10 }: { size?: number }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
     <polyline points="6 9 12 15 18 9" />
+  </svg>
+);
+
+const ScannerRailIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M4 7V4h4" />
+    <path d="M20 7V4h-4" />
+    <path d="M4 17v3h4" />
+    <path d="M20 17v3h-4" />
+    <path d="M7 12h10" />
+  </svg>
+);
+
+const FolderRailIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+  </svg>
+);
+
+const ClipboardListIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="8" y="2" width="8" height="4" rx="1" />
+    <path d="M9 12h6" />
+    <path d="M9 16h6" />
+    <path d="M5 6h14v14H5z" />
+  </svg>
+);
+
+const FileTextIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+    <path d="M14 2v6h6" />
+    <path d="M16 13H8" />
+    <path d="M16 17H8" />
+  </svg>
+);
+
+const FilesIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M8 2h8l4 4v12a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2z" />
+    <path d="M8 8h8" />
+    <path d="M4 6v14a2 2 0 0 0 2 2h10" />
+  </svg>
+);
+
+const HardDriveIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="3" y="4" width="18" height="12" rx="2" />
+    <path d="M3 16h18v4H3z" />
+    <path d="M7 20h.01" />
+    <path d="M11 20h.01" />
   </svg>
 );
 

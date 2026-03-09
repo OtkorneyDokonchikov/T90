@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { UserRole, ToolType, AppScenario, WorkspaceState, DocumentTemplateConfig, QcResultSummary } from './types';
+import { UserRole, ToolType, AppScenario, WorkspaceState, DocumentTemplateConfig, QcResultSummary, OperatorReportSummary } from './types';
 import TopBar from './components/TopBar';
 import LeftSidebar from './components/LeftSidebar';
 import RightInspector from './components/RightInspector';
@@ -8,6 +8,7 @@ import StatusBar from './components/StatusBar';
 import DocumentTemplateModal from './components/DocumentTemplateModal';
 import QcResultModal from './components/QcResultModal';
 import WorkstationLockOverlay, { LockSessionSnapshot } from './components/WorkstationLockOverlay';
+import ReportModal from './components/ReportModal';
 
 const App: React.FC = () => {
   const [state, setState] = useState<WorkspaceState>({
@@ -16,6 +17,7 @@ const App: React.FC = () => {
     activeTool: ToolType.SELECT,
     isVoiceActive: false,
     isSidebarOpen: true,
+    rightSidebarCollapsed: false,
     historyIndex: 0,
     history: ['Сессия успешно инициализирована'],
     theme: 'dark',
@@ -28,6 +30,7 @@ const App: React.FC = () => {
   const [isWorkstationLocked, setIsWorkstationLocked] = useState(false);
   const [lockedAt, setLockedAt] = useState<string>('');
   const [lockSnapshot, setLockSnapshot] = useState<LockSessionSnapshot | null>(null);
+  const [isReportModalOpen, setIsReportModalOpen] = useState(false);
 
   const qcResult: QcResultSummary = {
     documentNumber: '126',
@@ -55,6 +58,21 @@ const App: React.FC = () => {
       'Стр. 19 — пониженная контрастность',
       'Стр. 27 — артефакт сканирования',
     ],
+  };
+
+  const operatorReport: OperatorReportSummary = {
+    operatorName: 'Кондарев С.А.',
+    reportDate: '09.02.2026',
+    timeFrom: '09:00',
+    timeTo: '18:00',
+    stats: {
+      volumesProcessed: 3,
+      pagesProcessed: 248,
+      awardMaterials: 16,
+      incomingDocuments: 21,
+      submissions: 7,
+      otherDocuments: 5,
+    },
   };
 
   const updateState = useCallback(<K extends keyof WorkspaceState>(key: K, value: WorkspaceState[K]) => {
@@ -168,6 +186,7 @@ const App: React.FC = () => {
         onScenarioChange={handleScenarioChange}
         onOpenTemplateModal={() => setIsTemplateModalOpen(true)}
         onOpenQcResultModal={() => setIsQcResultModalOpen(true)}
+        onOpenReportModal={() => setIsReportModalOpen(true)}
         onLockWorkstation={requestLockWorkstation}
         onSwitchUser={handleSwitchUser}
         onSelectRole={() => addHistory('Открыт выбор роли')}
@@ -201,6 +220,8 @@ const App: React.FC = () => {
           setIsVoiceActive={(v) => updateState('isVoiceActive', v)}
           history={state.history}
           theme={state.theme}
+          isCollapsed={state.rightSidebarCollapsed}
+          onToggleCollapse={() => updateState('rightSidebarCollapsed', !state.rightSidebarCollapsed)}
         />
       </div>
 
@@ -274,6 +295,26 @@ const App: React.FC = () => {
         onUnlock={unlockWorkstation}
         onSwitchUser={handleSwitchUser}
         onFinishShift={handleFinishShift}
+      />
+
+      <ReportModal
+        isOpen={isReportModalOpen}
+        theme={state.theme}
+        report={operatorReport}
+        onClose={() => setIsReportModalOpen(false)}
+        onSave={() => {
+          addHistory(`Отчёт сохранён: ${operatorReport.reportDate ?? 'дата не указана'}`);
+          setIsReportModalOpen(false);
+        }}
+        onPrint={() => {
+          addHistory(`Отчёт отправлен на печать: ${operatorReport.reportDate ?? 'дата не указана'}`);
+          setIsReportModalOpen(false);
+        }}
+        onSend={(payload) => {
+          addHistory(`Отчёт отправлен по маршруту: ${operatorReport.reportDate ?? 'дата не указана'}`);
+          addHistory(`Источник отправки: официальный шаблон (${payload.text.slice(0, 42)}...)`);
+          setIsReportModalOpen(false);
+        }}
       />
     </div>
   );

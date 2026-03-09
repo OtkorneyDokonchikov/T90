@@ -32,6 +32,7 @@ export interface WorkspaceState {
   activeTool: ToolType;
   isVoiceActive: boolean;
   isSidebarOpen: boolean;
+  rightSidebarCollapsed: boolean;
   historyIndex: number;
   history: string[];
   theme: Theme;
@@ -93,6 +94,23 @@ export interface QcResultSummary {
   checks?: QcResultChecks;
   pages?: QcResultPages;
   issues?: string[];
+}
+
+export interface OperatorReportStats {
+  volumesProcessed?: number;
+  pagesProcessed?: number;
+  awardMaterials?: number;
+  incomingDocuments?: number;
+  submissions?: number;
+  otherDocuments?: number;
+}
+
+export interface OperatorReportSummary {
+  operatorName?: string;
+  reportDate?: string;
+  timeFrom?: string;
+  timeTo?: string;
+  stats?: OperatorReportStats;
 }
 
 export type ModuleVersionStatusKind = 'actual' | 'update_available' | 'conflict' | 'offline';
