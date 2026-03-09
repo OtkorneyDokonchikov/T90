@@ -254,13 +254,11 @@ const TopBar: React.FC<TopBarProps> = ({
 
   const userMenuItems = [
     { label: 'Профиль оператора', icon: <ProfileIcon size={12} />, action: () => setOpenMenu(null) },
-    { label: 'Мои задания', icon: <FileIcon />, action: () => setOpenMenu(null) },
     { label: 'Журнал действий', icon: <HistoryMiniIcon />, action: () => onScenarioChange(AppScenario.REVIEW) },
     { label: 'Сменить пользователя', icon: <SwitchUserIcon />, action: onSwitchUser },
     { label: 'Выбрать роль', icon: <RoleIcon />, action: onSelectRole },
     { label: 'Заблокировать рабочее место', icon: <LockIcon />, action: onLockWorkstation },
     { label: 'Сформировать отчет', icon: <ReportIcon />, action: onOpenReportModal },
-    { label: 'Завершить смену', icon: <ShiftEndIcon />, action: onFinishShift },
     { label: 'Выход', icon: <LogoutIcon />, action: onLogout, tone: 'text-red-400' },
   ];
 

@@ -222,6 +222,7 @@ const App: React.FC = () => {
           theme={state.theme}
           isCollapsed={state.rightSidebarCollapsed}
           onToggleCollapse={() => updateState('rightSidebarCollapsed', !state.rightSidebarCollapsed)}
+          onLogout={handleLogout}
         />
       </div>
 

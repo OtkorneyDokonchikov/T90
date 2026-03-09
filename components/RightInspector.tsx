@@ -11,6 +11,7 @@ interface RightInspectorProps {
   theme: Theme;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  onLogout: () => void;
 }
 
 const RightInspector: React.FC<RightInspectorProps> = ({
@@ -20,6 +21,7 @@ const RightInspector: React.FC<RightInspectorProps> = ({
   theme,
   isCollapsed,
   onToggleCollapse,
+  onLogout,
 }) => {
   const isDark = theme === 'dark';
   const [activeSection, setActiveSection] = useState<RightSectionId>('voice');
@@ -77,6 +79,16 @@ const RightInspector: React.FC<RightInspectorProps> = ({
     { id: 'operations', label: 'История операций', icon: <ScrollTextIcon /> },
   ];
 
+  const collapsedBottomActions = [
+    {
+      id: 'logout',
+      label: 'Выход из системы',
+      icon: <LogoutRailIcon />,
+      onClick: onLogout,
+      tone: 'danger' as const,
+    },
+  ];
+
   return (
     <aside
       className={`relative border-l flex flex-col shrink-0 transition-[width,background-color,border-color] duration-300 ${
@@ -93,6 +105,7 @@ const RightInspector: React.FC<RightInspectorProps> = ({
           activeId={activeSection}
           theme={theme}
           onItemClick={(id) => focusSection(id as RightSectionId)}
+          bottomActions={collapsedBottomActions}
         />
       ) : (
         <>
@@ -390,6 +403,14 @@ const ScrollTextIcon = () => (
     <path d="M12 7h4" />
     <path d="M12 11h4" />
     <path d="M12 15h4" />
+  </svg>
+);
+
+const LogoutRailIcon = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+    <path d="M16 17l5-5-5-5" />
+    <path d="M21 12H9" />
   </svg>
 );
 

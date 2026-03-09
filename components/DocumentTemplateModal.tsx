@@ -15,6 +15,8 @@ interface PresetCard {
   width: number;
   height: number;
   unit: DocumentUnit;
+  sections?: number;
+  foldType?: 'z' | 'c';
   isCustom?: boolean;
 }
 
@@ -26,6 +28,26 @@ const presetCards: PresetCard[] = [
   { id: 'legal', title: 'Legal', note: '8.5 × 14 дюйм', width: 8.5, height: 14, unit: 'дюймы' },
   { id: 'b5', title: 'B5', note: '176 × 250 мм', width: 176, height: 250, unit: 'мм' },
   { id: 'business_card', title: 'Визитка', note: '90 × 50 мм', width: 90, height: 50, unit: 'мм' },
+  {
+    id: 'booklet_z_fold',
+    title: 'Буклет Z-фальцовка',
+    note: '297 × 210 мм',
+    width: 297,
+    height: 210,
+    unit: 'мм',
+    sections: 3,
+    foldType: 'z',
+  },
+  {
+    id: 'booklet_c_fold',
+    title: 'Буклет C-фальцовка',
+    note: '297 × 210 мм',
+    width: 297,
+    height: 210,
+    unit: 'мм',
+    sections: 3,
+    foldType: 'c',
+  },
   { id: 'custom', title: 'Свой шаблон', note: 'Создать новый формат', width: 210, height: 297, unit: 'мм', isCustom: true },
 ];
 
@@ -42,6 +64,30 @@ const toDraft = (preset: PresetCard): DocumentTemplateConfig => {
       startNumber: 1,
       columns: 1,
       columnGap: 5,
+      margins: {
+        top: 10,
+        bottom: 10,
+        inside: 10,
+        outside: 10,
+      },
+      spread: false,
+      primaryTextFrame: false,
+      preview: false,
+    };
+  }
+
+  if (preset.id === 'booklet_z_fold' || preset.id === 'booklet_c_fold') {
+    return {
+      presetId: preset.id,
+      name: preset.title,
+      width: 297,
+      height: 210,
+      unit: 'мм',
+      orientation: 'landscape',
+      pages: 2,
+      startNumber: 1,
+      columns: 3,
+      columnGap: 0,
       margins: {
         top: 10,
         bottom: 10,
@@ -183,6 +229,18 @@ const DocumentTemplateModal: React.FC<DocumentTemplateModalProps> = ({ isOpen, t
                   >
                     <div className="text-[12px] font-semibold text-zinc-100">{preset.title}</div>
                     <div className="mt-0.5 text-[9px] text-zinc-500">{preset.note}</div>
+                    {preset.sections ? (
+                      <div className="mt-1.5">
+                        <div className="h-4 w-full overflow-hidden rounded-sm border border-white/15 grid grid-cols-3">
+                          <span className="border-r border-white/15 bg-white/5" />
+                          <span className="border-r border-white/15 bg-white/5" />
+                          <span className="bg-white/5" />
+                        </div>
+                        <div className="mt-0.5 text-[8px] uppercase tracking-wide text-zinc-500">
+                          {preset.foldType === 'z' ? 'Z · 3 секции' : 'C · 3 секции'}
+                        </div>
+                      </div>
+                    ) : null}
                   </button>
                 );
               })}

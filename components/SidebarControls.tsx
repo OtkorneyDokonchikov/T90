@@ -7,6 +7,14 @@ export interface RailItem {
   icon: React.ReactNode;
 }
 
+export interface RailAction {
+  id: string;
+  label: string;
+  icon: React.ReactNode;
+  onClick: () => void;
+  tone?: 'default' | 'danger';
+}
+
 interface SidebarEdgeToggleProps {
   side: 'left' | 'right';
   isCollapsed: boolean;
@@ -19,6 +27,7 @@ interface CollapsedIconRailProps {
   activeId: string;
   theme: Theme;
   onItemClick: (id: string) => void;
+  bottomActions?: RailAction[];
 }
 
 interface SidebarTopToggleProps {
@@ -56,32 +65,59 @@ export const SidebarEdgeToggle: React.FC<SidebarEdgeToggleProps> = ({ side, isCo
   );
 };
 
-export const CollapsedIconRail: React.FC<CollapsedIconRailProps> = ({ items, activeId, theme, onItemClick }) => {
+export const CollapsedIconRail: React.FC<CollapsedIconRailProps> = ({ items, activeId, theme, onItemClick, bottomActions = [] }) => {
   const isDark = theme === 'dark';
 
   return (
-    <nav className="h-full w-full flex flex-col items-center py-3 gap-2">
-      {items.map((item) => {
-        const isActive = activeId === item.id;
-        return (
-          <button
-            key={item.id}
-            type="button"
-            aria-label={item.label}
-            title={item.label}
-            onClick={() => onItemClick(item.id)}
-            className={`h-9 w-9 rounded-md border flex items-center justify-center transition-colors ${
-              isActive
-                ? 'text-blue-400 border-blue-500/40 bg-blue-500/10'
-                : isDark
-                  ? 'text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-white/5'
-                  : 'text-zinc-500 border-transparent hover:text-zinc-800 hover:bg-zinc-100'
-            }`}
-          >
-            {item.icon}
-          </button>
-        );
-      })}
+    <nav className="h-full w-full flex flex-col items-center px-2 py-3">
+      <div className="w-full flex flex-col items-center gap-2">
+        {items.map((item) => {
+          const isActive = activeId === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              aria-label={item.label}
+              title={item.label}
+              onClick={() => onItemClick(item.id)}
+              className={`h-9 w-9 rounded-md border flex items-center justify-center transition-colors ${
+                isActive
+                  ? 'text-blue-400 border-blue-500/40 bg-blue-500/10'
+                  : isDark
+                    ? 'text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-white/5'
+                    : 'text-zinc-500 border-transparent hover:text-zinc-800 hover:bg-zinc-100'
+              }`}
+            >
+              {item.icon}
+            </button>
+          );
+        })}
+      </div>
+
+      {bottomActions.length > 0 && (
+        <div className={`mt-auto w-full border-t pt-3 flex flex-col items-center gap-2 ${isDark ? 'border-white/10' : 'border-zinc-200'}`}>
+          {bottomActions.map((action) => (
+            <button
+              key={action.id}
+              type="button"
+              aria-label={action.label}
+              title={action.label}
+              onClick={action.onClick}
+              className={`h-9 w-9 rounded-md border flex items-center justify-center transition-colors ${
+                action.tone === 'danger'
+                  ? isDark
+                    ? 'text-zinc-500 border-transparent hover:text-red-300 hover:bg-red-500/10'
+                    : 'text-zinc-500 border-transparent hover:text-red-600 hover:bg-red-50'
+                  : isDark
+                    ? 'text-zinc-400 border-transparent hover:text-zinc-200 hover:bg-white/5'
+                    : 'text-zinc-500 border-transparent hover:text-zinc-800 hover:bg-zinc-100'
+              }`}
+            >
+              {action.icon}
+            </button>
+          ))}
+        </div>
+      )}
     </nav>
   );
 };
