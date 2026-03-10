@@ -66,6 +66,52 @@ export interface DocumentTemplateConfig {
   preview: boolean;
 }
 
+export type VoiceStatus =
+  | 'disabled'
+  | 'idle'
+  | 'listening'
+  | 'recognized'
+  | 'executed'
+  | 'unknown'
+  | 'error'
+  | 'mic_unavailable'
+  | 'unsupported';
+
+export type VoiceCommandId =
+  | 'open_document'
+  | 'hide_right_panel'
+  | 'set_landscape_orientation'
+  | 'show_qc_result'
+  | 'lock_workstation';
+
+export type VoiceNoticeTone = 'neutral' | 'info' | 'success' | 'warning' | 'error';
+
+export interface VoiceToast {
+  id: number;
+  message: string;
+  tone: VoiceNoticeTone;
+}
+
+export interface OpenDocumentTabState {
+  id: string;
+  displayName: string;
+  internalFileName: string;
+  isDirty: boolean;
+  scenario: AppScenario;
+  selectedPage: number;
+  pageOrientation: DocumentOrientation;
+  documentType: 'document' | 'brochure';
+  layoutMode: 'single' | 'spread';
+  spreadMode: boolean;
+  pageCount: number;
+  pageSize: 'A5' | 'A4' | 'Letter' | 'Custom';
+  widthMm: number;
+  heightMm: number;
+  previewImage: string;
+  zoom: number;
+  structureNodes: string[];
+}
+
 export type QcResultStatus = 'success' | 'warning' | 'error';
 
 export interface QcResultChecks {

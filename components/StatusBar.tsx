@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Theme } from '../types';
+import { Theme, VoiceToast } from '../types';
 
 interface StatusBarProps {
   isVoiceActive: boolean;
   setIsVoiceActive: (active: boolean) => void;
-  lastAction: string;
   currentPage: number;
   totalPages: number;
   onPageChange: (page: number) => void;
+  voiceToast: VoiceToast | null;
   theme: Theme;
 }
 
@@ -179,10 +179,10 @@ const readRealMetrics = (): Partial<RuntimeMetrics> | null => {
 const StatusBar: React.FC<StatusBarProps> = ({
   isVoiceActive,
   setIsVoiceActive,
-  lastAction,
   currentPage,
   totalPages,
   onPageChange,
+  voiceToast,
   theme,
 }) => {
   const isDark = theme === 'dark';
@@ -257,6 +257,26 @@ const StatusBar: React.FC<StatusBarProps> = ({
   }, []);
 
   const ramValueColorClass = runtimeMetrics.ramPercent > 70 ? 'text-yellow-400' : 'text-green-500';
+  const voiceToastToneClass =
+    voiceToast?.tone === 'success'
+      ? isDark
+        ? 'text-emerald-300 border-emerald-500/35 bg-emerald-500/10'
+        : 'text-emerald-700 border-emerald-300/70 bg-emerald-50'
+      : voiceToast?.tone === 'warning'
+        ? isDark
+          ? 'text-amber-300 border-amber-500/35 bg-amber-500/10'
+          : 'text-amber-700 border-amber-300/70 bg-amber-50'
+        : voiceToast?.tone === 'error'
+          ? isDark
+            ? 'text-red-300 border-red-500/35 bg-red-500/10'
+            : 'text-red-700 border-red-300/70 bg-red-50'
+          : voiceToast?.tone === 'info'
+            ? isDark
+              ? 'text-blue-300 border-blue-500/35 bg-blue-500/10'
+              : 'text-blue-700 border-blue-300/70 bg-blue-50'
+            : isDark
+              ? 'text-zinc-300 border-white/15 bg-white/5'
+              : 'text-zinc-700 border-zinc-300 bg-white';
 
   return (
     <footer className={`h-8 border-t flex items-center justify-between px-3 text-[10px] font-medium z-50 transition-colors relative ${isDark ? 'bg-[#111] border-white/10 text-zinc-500' : 'bg-white border-zinc-200 text-zinc-500'}`}>
@@ -285,45 +305,53 @@ const StatusBar: React.FC<StatusBarProps> = ({
       </div>
 
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-        <div className={`flex items-center gap-1.5 px-1 text-[9px] uppercase font-bold tracking-tight ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
-          <FileIcon />
-          <span>Документ, страница</span>
-        </div>
-
-        <div className={`flex items-center rounded-md border overflow-hidden h-6 shadow-sm transition-all ${isDark ? 'bg-zinc-900 border-white/10 hover:border-blue-500/30' : 'bg-white border-zinc-300 hover:border-blue-400'}`}>
-          <button
-            onClick={() => onPageChange(currentPage - 1)}
-            disabled={currentPage <= 1}
-            title="Предыдущая страница"
-            className={`px-2 h-full border-r transition-colors flex items-center justify-center ${isDark ? 'border-white/5 hover:bg-zinc-800 disabled:opacity-20 text-zinc-400' : 'border-zinc-200 hover:bg-zinc-100 disabled:opacity-30 text-zinc-500'}`}
-          >
-            <ChevronLeftIcon />
-          </button>
-
-          <div className={`px-4 h-full flex items-center text-[10px] font-mono font-black min-w-[70px] justify-center tracking-tighter ${isDark ? 'text-blue-400 bg-blue-500/5' : 'text-blue-600 bg-blue-50/50'}`}>
-            {currentPage} / {totalPages}
+        {voiceToast ? (
+          <div className={`h-6 px-3 rounded-md border flex items-center text-[9px] font-bold tracking-wide ${voiceToastToneClass}`}>
+            {voiceToast.message}
           </div>
+        ) : (
+          <>
+            <div className={`flex items-center gap-1.5 px-1 text-[9px] uppercase font-bold tracking-tight ${isDark ? 'text-zinc-500' : 'text-zinc-400'}`}>
+              <FileIcon />
+              <span>Документ, страница</span>
+            </div>
 
-          <button
-            onClick={() => onPageChange(currentPage + 1)}
-            disabled={currentPage >= totalPages}
-            title="Следующая страница"
-            className={`px-2 h-full border-l transition-colors flex items-center justify-center ${isDark ? 'border-white/5 hover:bg-zinc-800 disabled:opacity-20 text-zinc-400' : 'border-zinc-200 hover:bg-zinc-100 disabled:opacity-30 text-zinc-500'}`}
-          >
-            <ChevronRightIcon />
-          </button>
-        </div>
+            <div className={`flex items-center rounded-md border overflow-hidden h-6 shadow-sm transition-all ${isDark ? 'bg-zinc-900 border-white/10 hover:border-blue-500/30' : 'bg-white border-zinc-300 hover:border-blue-400'}`}>
+              <button
+                onClick={() => onPageChange(currentPage - 1)}
+                disabled={currentPage <= 1}
+                title="Предыдущая страница"
+                className={`px-2 h-full border-r transition-colors flex items-center justify-center ${isDark ? 'border-white/5 hover:bg-zinc-800 disabled:opacity-20 text-zinc-400' : 'border-zinc-200 hover:bg-zinc-100 disabled:opacity-30 text-zinc-500'}`}
+              >
+                <ChevronLeftIcon />
+              </button>
+
+              <div className={`px-4 h-full flex items-center text-[10px] font-mono font-black min-w-[70px] justify-center tracking-tighter ${isDark ? 'text-blue-400 bg-blue-500/5' : 'text-blue-600 bg-blue-50/50'}`}>
+                {currentPage} / {totalPages}
+              </div>
+
+              <button
+                onClick={() => onPageChange(currentPage + 1)}
+                disabled={currentPage >= totalPages}
+                title="Следующая страница"
+                className={`px-2 h-full border-l transition-colors flex items-center justify-center ${isDark ? 'border-white/5 hover:bg-zinc-800 disabled:opacity-20 text-zinc-400' : 'border-zinc-200 hover:bg-zinc-100 disabled:opacity-30 text-zinc-500'}`}
+              >
+                <ChevronRightIcon />
+              </button>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="flex items-center gap-4 min-w-[200px] justify-end">
         <button
           onClick={() => setIsVoiceActive(!isVoiceActive)}
           className={`flex items-center gap-1.5 px-2 py-0.5 rounded transition-all active:scale-95 ${
-            isVoiceActive ? 'bg-red-500/10 text-red-500 font-bold' : (isDark ? 'hover:bg-white/5 text-zinc-500 hover:text-zinc-300' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-800')
+            isVoiceActive ? 'bg-blue-500/10 text-blue-400 font-bold' : (isDark ? 'hover:bg-white/5 text-zinc-500 hover:text-zinc-300' : 'hover:bg-zinc-100 text-zinc-500 hover:text-zinc-800')
           }`}
         >
           <MicIcon active={isVoiceActive} />
-          <span className="uppercase tracking-widest">{isVoiceActive ? 'СЛУШАЮ И ПОВИНУЮСЬ' : 'Голос: Ожидание'}</span>
+          <span className="uppercase tracking-widest">{isVoiceActive ? 'Голос: Активен' : 'Голос: Выкл'}</span>
         </button>
 
         <div className={`h-3 w-px ${isDark ? 'bg-white/10' : 'bg-zinc-200'}`} />

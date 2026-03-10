@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Theme } from '../types';
+import { Theme, VoiceStatus } from '../types';
 import { CollapsedIconRail, RailItem, SidebarTopToggle } from './SidebarControls';
 
 type RightSectionId = 'voice' | 'commands' | 'recognition' | 'operations';
@@ -7,6 +7,8 @@ type RightSectionId = 'voice' | 'commands' | 'recognition' | 'operations';
 interface RightInspectorProps {
   isVoiceActive: boolean;
   setIsVoiceActive: (active: boolean) => void;
+  voiceStatus: VoiceStatus;
+  lastRecognizedCommand: string;
   history: string[];
   theme: Theme;
   isCollapsed: boolean;
@@ -17,6 +19,8 @@ interface RightInspectorProps {
 const RightInspector: React.FC<RightInspectorProps> = ({
   isVoiceActive,
   setIsVoiceActive,
+  voiceStatus,
+  lastRecognizedCommand,
   history,
   theme,
   isCollapsed,
@@ -25,6 +29,54 @@ const RightInspector: React.FC<RightInspectorProps> = ({
 }) => {
   const isDark = theme === 'dark';
   const [activeSection, setActiveSection] = useState<RightSectionId>('voice');
+
+  const voiceStatusMap: Record<VoiceStatus, { label: string; tone: 'gray' | 'blue' | 'green' | 'yellow' | 'red' }> = {
+    disabled: { label: 'Голосовое управление выключено', tone: 'gray' },
+    idle: { label: 'Ожидание команды', tone: 'gray' },
+    listening: { label: 'Слушаю...', tone: 'blue' },
+    recognized: { label: 'Команда распознана', tone: 'blue' },
+    executed: { label: 'Команда выполнена', tone: 'green' },
+    unknown: { label: 'Команда не распознана', tone: 'yellow' },
+    error: { label: 'Ошибка распознавания', tone: 'red' },
+    mic_unavailable: { label: 'Микрофон недоступен', tone: 'red' },
+    unsupported: { label: 'Голосовое управление недоступно', tone: 'red' },
+  };
+
+  const voiceToneClasses: Record<'gray' | 'blue' | 'green' | 'yellow' | 'red', { card: string; icon: string; text: string; muted: string }> = {
+    gray: {
+      card: isDark ? 'border-zinc-800 bg-zinc-800/20' : 'border-zinc-200 bg-white',
+      icon: isDark ? 'text-zinc-600' : 'text-zinc-400',
+      text: isDark ? 'text-zinc-400' : 'text-zinc-500',
+      muted: isDark ? 'text-zinc-500' : 'text-zinc-400',
+    },
+    blue: {
+      card: isDark ? 'border-blue-500/35 bg-blue-500/10' : 'border-blue-300/70 bg-blue-50/80',
+      icon: isDark ? 'text-blue-400' : 'text-blue-600',
+      text: isDark ? 'text-blue-300' : 'text-blue-700',
+      muted: isDark ? 'text-blue-200/80' : 'text-blue-700/80',
+    },
+    green: {
+      card: isDark ? 'border-emerald-500/35 bg-emerald-500/10' : 'border-emerald-300/70 bg-emerald-50/80',
+      icon: isDark ? 'text-emerald-400' : 'text-emerald-600',
+      text: isDark ? 'text-emerald-300' : 'text-emerald-700',
+      muted: isDark ? 'text-emerald-200/80' : 'text-emerald-700/80',
+    },
+    yellow: {
+      card: isDark ? 'border-amber-500/35 bg-amber-500/10' : 'border-amber-300/70 bg-amber-50/80',
+      icon: isDark ? 'text-amber-400' : 'text-amber-600',
+      text: isDark ? 'text-amber-300' : 'text-amber-700',
+      muted: isDark ? 'text-amber-200/80' : 'text-amber-700/80',
+    },
+    red: {
+      card: isDark ? 'border-red-500/35 bg-red-500/10' : 'border-red-300/70 bg-red-50/80',
+      icon: isDark ? 'text-red-400' : 'text-red-600',
+      text: isDark ? 'text-red-300' : 'text-red-700',
+      muted: isDark ? 'text-red-200/80' : 'text-red-700/80',
+    },
+  };
+
+  const currentVoiceStatus = voiceStatusMap[voiceStatus];
+  const currentVoiceTone = voiceToneClasses[currentVoiceStatus.tone];
 
   const voiceSliderRef = useRef<HTMLDivElement>(null);
   const opsSliderRef = useRef<HTMLDivElement>(null);
@@ -130,7 +182,7 @@ const RightInspector: React.FC<RightInspectorProps> = ({
                     onClick={() => setIsVoiceActive(!isVoiceActive)}
                     className={`w-10 h-5 rounded-full p-0.5 cursor-pointer transition-all duration-300 flex items-center relative ${
                       isVoiceActive
-                        ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]'
+                        ? 'bg-blue-500 shadow-[0_0_15px_rgba(59,130,246,0.55)]'
                         : isDark
                           ? 'bg-zinc-700'
                           : 'bg-zinc-300'
@@ -145,29 +197,26 @@ const RightInspector: React.FC<RightInspectorProps> = ({
                 </div>
 
                 <div
-                  className={`flex flex-col items-center justify-center py-2.5 border border-dashed rounded-lg transition-all duration-300 ${
-                    isVoiceActive
-                      ? 'border-green-500/40 bg-green-500/5 shadow-[inset_0_0_12px_rgba(34,197,94,0.05)]'
-                      : isDark
-                        ? 'border-zinc-800 bg-zinc-800/20'
-                        : 'border-zinc-200 bg-white'
-                  }`}
+                  className={`flex flex-col items-center justify-center py-2.5 border border-dashed rounded-lg transition-all duration-300 ${currentVoiceTone.card}`}
                 >
-                  <div className={`relative mb-1.5 transition-colors duration-300 ${isVoiceActive ? 'text-green-500' : isDark ? 'text-zinc-600' : 'text-zinc-300'}`}>
+                  <div className={`relative mb-1.5 transition-colors duration-300 ${currentVoiceTone.icon}`}>
                     <MicIcon large active={isVoiceActive} />
-                    {isVoiceActive && (
-                      <div className="absolute inset-0 animate-ping opacity-25 text-green-500">
+                    {voiceStatus === 'listening' && (
+                      <div className={`absolute inset-0 animate-ping opacity-25 ${currentVoiceTone.icon}`}>
                         <MicIcon large active={false} />
                       </div>
                     )}
                   </div>
                   <span
-                    className={`text-[8px] px-2 text-center uppercase font-black tracking-[0.14em] transition-colors duration-300 ${
-                      isVoiceActive ? 'text-green-500' : isDark ? 'text-zinc-500' : 'text-zinc-400'
-                    }`}
+                    className={`text-[8px] px-2 text-center uppercase font-black tracking-[0.14em] transition-colors duration-300 ${currentVoiceTone.text}`}
                   >
-                    {isVoiceActive ? 'СЛУШАЮ И ПОВИНУЮСЬ' : 'ОЖИДАНИЕ'}
+                    {currentVoiceStatus.label}
                   </span>
+                  {lastRecognizedCommand ? (
+                    <span className={`mt-1 px-2 text-[8px] leading-tight text-center ${currentVoiceTone.muted}`}>
+                      {`Команда: ${lastRecognizedCommand}`}
+                    </span>
+                  ) : null}
                 </div>
               </section>
 

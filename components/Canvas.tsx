@@ -1,11 +1,10 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
-import { AppScenario, ToolType, Theme } from '../types';
+import { AppScenario, DocumentOrientation, ToolType, Theme } from '../types';
 import linerIcon from '../images/liner.png';
 import ToolDock from './ToolDock';
 
 type Unit = 'mm' | 'cm' | 'in';
 type Orientation = 'vertical' | 'horizontal';
-type PageOrientation = 'portrait' | 'landscape';
 
 interface Guide {
   id: string;
@@ -18,6 +17,18 @@ interface CanvasProps {
   activeTool: ToolType;
   onToolSelect: (tool: ToolType) => void;
   onAction: (log: string) => void;
+  pageOrientation: DocumentOrientation;
+  onPageOrientationChange: (orientation: DocumentOrientation) => void;
+  pageCount: number;
+  previewImage: string;
+  layoutMode: 'single' | 'spread';
+  spreadMode: boolean;
+  documentType: 'document' | 'brochure';
+  pageSize: 'A5' | 'A4' | 'Letter' | 'Custom';
+  widthMm: number;
+  heightMm: number;
+  zoom: number;
+  onZoomChange: (zoom: number) => void;
   theme: Theme;
 }
 
@@ -84,9 +95,25 @@ const formatGuidePosition = (px: number, unit: Unit, zoomScale: number): string 
   return `${value.toFixed(2).replace(/\.00$/, '')} дюйм`;
 };
 
-const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onAction, theme }) => {
-  const [zoom, setZoom] = useState(100);
-  const [pageOrientation, setPageOrientation] = useState<PageOrientation>('portrait');
+const Canvas: React.FC<CanvasProps> = ({
+  scenario,
+  activeTool,
+  onToolSelect,
+  onAction,
+  pageOrientation,
+  onPageOrientationChange,
+  pageCount,
+  previewImage,
+  layoutMode,
+  spreadMode,
+  documentType,
+  pageSize,
+  widthMm,
+  heightMm,
+  zoom,
+  onZoomChange,
+  theme,
+}) => {
 
   const [rulerEnabled, setRulerEnabled] = useState(false);
   const [unit, setUnit] = useState<Unit>('cm');
@@ -107,8 +134,18 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
   const isDark = theme === 'dark';
   const isQC = scenario === AppScenario.QUALITY_CONTROL;
 
-  const basePortrait = { width: 780, height: 1100 };
-  const baseLandscape = { width: 1100, height: 780 };
+  const mmToPx = DPI / 25.4;
+  const pagePhysicalWidthPx = Math.max(1, widthMm * mmToPx);
+  const pagePhysicalHeightPx = Math.max(1, heightMm * mmToPx);
+
+  const basePortrait = {
+    width: documentType === 'brochure' ? pagePhysicalWidthPx : 780,
+    height: documentType === 'brochure' ? pagePhysicalHeightPx : 1100,
+  };
+  const baseLandscape = {
+    width: documentType === 'brochure' ? pagePhysicalHeightPx : 1100,
+    height: documentType === 'brochure' ? pagePhysicalWidthPx : 780,
+  };
   const basePage = pageOrientation === 'portrait' ? basePortrait : baseLandscape;
   const workspaceOffset = rulerEnabled ? RULER_THICKNESS : 0;
   const safeTopPadding = workspaceOffset + TOOL_DOCK_HEIGHT + PANEL_GAP + WORKSPACE_SAFE_MARGIN;
@@ -419,29 +456,60 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
             <div className="absolute top-0 left-0 right-0 p-10 flex justify-start items-start z-10 pointer-events-none">
               <div className="flex flex-col gap-2">
                 <span className="text-[14px] font-black uppercase tracking-[0.4em] text-zinc-400">MASTER VIEW</span>
-                <span className="text-[10px] font-mono text-zinc-500 opacity-60">29.7 CM • ISO 216</span>
+                <span className="text-[10px] font-mono text-zinc-500 opacity-60">
+                  {documentType === 'brochure' ? `${pageSize} • ${widthMm}×${heightMm} мм • SPREAD` : `Страниц: ${pageCount}`}
+                </span>
               </div>
             </div>
 
             <div className="flex-1 relative p-12 flex flex-col items-center justify-center">
-              <div className="relative w-full h-full max-h-[80%] aspect-[3/4] shadow-2xl overflow-hidden group">
-                <img src="https://picsum.photos/1200/1600?grayscale" className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100" alt="Master" />
-                {isQC && (
-                  <>
-                    <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-                      <div className="w-32 h-32 rounded-full border-2 border-red-500/40 bg-red-500/10 backdrop-blur-sm flex items-center justify-center animate-pulse">
-                        <span className="text-[12px] font-black text-red-500 uppercase tracking-widest">Шум</span>
+              {layoutMode === 'spread' || spreadMode ? (
+                <div className="relative w-full h-full max-h-[80%] max-w-[95%] shadow-2xl overflow-hidden flex items-center justify-center gap-3">
+                  <div
+                    className="relative rounded-md border border-zinc-300/30 overflow-hidden bg-white"
+                    style={{
+                      width: pageOrientation === 'landscape' ? pageHeight / 2 : pageWidth / 2,
+                      height: pageOrientation === 'landscape' ? pageWidth / 2 : pageHeight / 2,
+                      maxWidth: '48%',
+                      maxHeight: '100%',
+                    }}
+                  >
+                    <img src={previewImage} className="w-full h-full object-cover opacity-95" alt="Spread left" />
+                    <span className="absolute left-2 top-2 text-[10px] font-black tracking-wider text-white/90 bg-black/35 px-1.5 py-0.5 rounded">ЛЕВАЯ</span>
+                  </div>
+                  <div
+                    className="relative rounded-md border border-zinc-300/30 overflow-hidden bg-white"
+                    style={{
+                      width: pageOrientation === 'landscape' ? pageHeight / 2 : pageWidth / 2,
+                      height: pageOrientation === 'landscape' ? pageWidth / 2 : pageHeight / 2,
+                      maxWidth: '48%',
+                      maxHeight: '100%',
+                    }}
+                  >
+                    <img src={`${previewImage}${previewImage.includes('?') ? '&' : '?'}page=right`} className="w-full h-full object-cover opacity-95" alt="Spread right" />
+                    <span className="absolute right-2 top-2 text-[10px] font-black tracking-wider text-white/90 bg-black/35 px-1.5 py-0.5 rounded">ПРАВАЯ</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="relative w-full h-full max-h-[80%] aspect-[3/4] shadow-2xl overflow-hidden group">
+                  <img src={previewImage} className="w-full h-full object-cover opacity-90 transition-opacity group-hover:opacity-100" alt="Master" />
+                  {isQC && (
+                    <>
+                      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
+                        <div className="w-32 h-32 rounded-full border-2 border-red-500/40 bg-red-500/10 backdrop-blur-sm flex items-center justify-center animate-pulse">
+                          <span className="text-[12px] font-black text-red-500 uppercase tracking-widest">Шум</span>
+                        </div>
                       </div>
-                    </div>
-                    <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
-                      <div className="px-8 py-3 rounded-lg border-2 border-amber-500/40 bg-amber-500/10 backdrop-blur-sm flex items-center justify-center">
-                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Перекос +2.4°</span>
+                      <div className="absolute bottom-10 left-1/2 -translate-x-1/2">
+                        <div className="px-8 py-3 rounded-lg border-2 border-amber-500/40 bg-amber-500/10 backdrop-blur-sm flex items-center justify-center">
+                          <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Перекос +2.4°</span>
+                        </div>
                       </div>
-                    </div>
-                  </>
-                )}
-                <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-              </div>
+                    </>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                </div>
+              )}
             </div>
           </div>
 
@@ -456,13 +524,13 @@ const Canvas: React.FC<CanvasProps> = ({ scenario, activeTool, onToolSelect, onA
         className={`absolute z-40 w-[228px] flex items-center justify-center gap-1.5 backdrop-blur-2xl border p-1.5 rounded-2xl shadow-2xl transition-all duration-500 ease-in-out ${isDark ? 'bg-[#181818]/95 border-white/10' : 'bg-white/95 border-zinc-200'}`}
         style={{ left: workspaceCenterX, bottom: BOTTOM_DOCK_BOTTOM, transform: 'translateX(-50%)' }}
       >
-            <button onClick={() => setZoom((z) => Math.max(10, z - 10))} className="p-1.5 text-zinc-500 hover:text-white">-</button>
+            <button onClick={() => onZoomChange(Math.max(10, zoom - 10))} className="p-1.5 text-zinc-500 hover:text-white">-</button>
             <div className="text-[11px] font-black min-w-[50px] text-center">{zoom}%</div>
-            <button onClick={() => setZoom((z) => Math.min(400, z + 10))} className="p-1.5 text-zinc-500 hover:text-white">+</button>
+            <button onClick={() => onZoomChange(Math.min(400, zoom + 10))} className="p-1.5 text-zinc-500 hover:text-white">+</button>
             <div className="w-px h-4 bg-zinc-700 mx-1" />
 
             <button
-              onClick={() => setPageOrientation((p) => (p === 'portrait' ? 'landscape' : 'portrait'))}
+              onClick={() => onPageOrientationChange(pageOrientation === 'portrait' ? 'landscape' : 'portrait')}
               className={`p-1.5 rounded-xl transition-colors duration-150 ${isDark ? 'text-zinc-400 hover:text-white hover:bg-white/5' : 'text-zinc-600 hover:bg-zinc-100'}`}
               title="Ориентация страницы"
             >

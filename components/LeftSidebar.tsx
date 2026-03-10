@@ -7,6 +7,10 @@ interface LeftSidebarProps {
   setIsOpen: (open: boolean) => void;
   selectedPage: number;
   onPageSelect: (page: number) => void;
+  pageCount?: number;
+  structureNodes?: string[];
+  activeDocumentName?: string;
+  spreadMode?: boolean;
   theme: Theme;
 }
 
@@ -227,7 +231,17 @@ const statusToneMap: Record<ScanDevice['status'], string> = {
   inactive: 'bg-zinc-400',
 };
 
-const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPage, onPageSelect, theme }) => {
+const LeftSidebar: React.FC<LeftSidebarProps> = ({
+  isOpen,
+  setIsOpen,
+  selectedPage,
+  onPageSelect,
+  pageCount = 100,
+  structureNodes = ['Изображения', 'Текстовые блоки', 'Подписи', 'Объекты', 'Слои', 'Области редактирования'],
+  activeDocumentName = 'Документ',
+  spreadMode = false,
+  theme,
+}) => {
   const isDark = theme === 'dark';
 
   const [expandedSections, setExpandedSections] = useState<Set<SectionId>>(
@@ -296,7 +310,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
     });
   };
 
-  const documentPages = useMemo(() => Array.from({ length: 100 }, (_, i) => i + 1), []);
+  const documentPages = useMemo(() => Array.from({ length: Math.max(1, pageCount) }, (_, i) => i + 1), [pageCount]);
   const activePageId = selectedPage;
 
   const togglePageStructure = (page: number) => {
@@ -633,7 +647,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
               >
                 <span className="flex items-center gap-2">
                   <span className={`transition-transform duration-200 ${isDocumentStructureOpen ? 'rotate-0' : '-rotate-90'}`}><ChevronDown size={9} /></span>
-                  Структура документа
+                  {`Структура: ${activeDocumentName}`}
                 </span>
               </button>
 
@@ -673,7 +687,7 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
 
                         {isPageExpanded && (
                           <div className="pl-9 pr-2 pb-1.5 space-y-1">
-                            {['Изображения', 'Текстовые блоки', 'Подписи', 'Объекты', 'Слои', 'Области редактирования'].map((node) => (
+                            {structureNodes.map((node) => (
                               <button
                                 key={`${page}-${node}`}
                                 type="button"
@@ -683,6 +697,15 @@ const LeftSidebar: React.FC<LeftSidebarProps> = ({ isOpen, setIsOpen, selectedPa
                                 {node}
                               </button>
                             ))}
+                            {spreadMode ? (
+                              <button
+                                type="button"
+                                onClick={() => handlePageClick(page)}
+                                className={`w-full text-left rounded px-2 py-1 text-[9px] ${isDark ? 'text-amber-300 hover:bg-white/5' : 'text-amber-700 hover:bg-zinc-100'}`}
+                              >
+                                Разворотный блок
+                              </button>
+                            ) : null}
                           </div>
                         )}
                       </div>
